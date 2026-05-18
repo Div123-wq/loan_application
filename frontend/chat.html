@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanLens AI — Conversational Intelligence Advisor</title>
+  <script>
+    if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
+      window.location.href = 'auth.html';
+    }
+  </script>
+  <link rel="stylesheet" href="css/global.css">
+  <style>
+    .chat-layout {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: 24px;
+      height: calc(100vh - 128px);
+    }
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 16px 20px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .chat-input-bar {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-secondary);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .chat-input-bar input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      color: white;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .voice-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--blue-glow);
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+    }
+    .voice-btn.active {
+      background: var(--red-glow);
+      color: var(--red);
+      animation: pulse-glow 1.5s infinite;
+    }
+    .negotiation-card {
+      border-left: 3px solid var(--blue);
+      background: linear-gradient(90deg, rgba(79, 142, 247, 0.04) 0%, var(--bg-card) 100%);
+      padding: 16px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+    }
+    .negotiation-script-box {
+      background: var(--bg-secondary);
+      border: 1px dashed var(--border-accent);
+      padding: 14px;
+      border-radius: var(--radius-md);
+      font-style: italic;
+      font-size: 0.9rem;
+      color: var(--text-primary);
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="compare.html">Compare</a>
+      <a href="chat.html" class="active">AI Chat</a>
+    </div>
+    <div id="navCtaArea">
+      <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-label">Document Intelligence</div>
+      <button class="sidebar-item" onclick="window.location.href='dashboard.html'">
+        <span class="icon">📊</span> Return Dashboard
+      </button>
+
+      <div class="sidebar-label">Chat Settings</div>
+      <div style="padding: 10px 12px;">
+        <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px;">🌍 SELECT LANGUAGE</label>
+        <select id="langSelect" onchange="changeLanguage()" style="background: var(--bg-secondary); color: white; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px; width: 100%; font-family: inherit; font-size: 0.85rem;">
+          <option value="en">English (Default)</option>
+          <option value="hi">Hindi (हिंदी)</option>
+          <option value="kn">Kannada (ಕನ್ನಡ)</option>
+          <option value="ta">Tamil (தமிழ்)</option>
+          <option value="te">Telugu (తెలుగు)</option>
+          <option value="ml">Malayalam (മലയാളം)</option>
+          <option value="mr">Marathi (मराठी)</option>
+        </select>
+      </div>
+      
+      <div style="padding: 10px 12px 20px;">
+        <button class="btn btn-secondary btn-sm" onclick="clearConversation()" style="width: 100%;">🧹 Clear History</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <div class="chat-layout">
+        
+        <!-- Negotiation Assistant (Futuristic feature 👑) -->
+        <div class="card" style="overflow-y: auto; height: 100%;">
+          <div class="badge badge-purple" style="margin-bottom: 8px;">👑 Startup Level Feature</div>
+          <h3 class="card-title" style="margin-bottom: 8px;">AI Negotiation Assistant</h3>
+          <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px;">AI suggestions for what you can bargain with the bank before finalizing signatures.</p>
+
+          <div id="negotiationList">
+            <!-- Dynamically populated -->
+          </div>
+
+          <div class="section-divider"></div>
+
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">🗣️ Negotiation Script Dialogue</h4>
+          <p style="font-size: 0.78rem; color: var(--text-muted);">Use this polite benchmark opener to negotiate floating margins or charges:</p>
+          <div class="negotiation-script-box" id="negotiationScript">
+            "Thank you for the initial loan agreement proposal. Given my positive repayment track record and credit rating of 780, the 2% foreclosure exit fee and ₹15,000 flat administrative levy deviate slightly from comparable tier-1 lender standards. Could we modify this fee sheet to match competitor parameters?"
+          </div>
+        </div>
+
+        <!-- Chat Pane -->
+        <div class="chat-panel">
+          <div class="chat-header">
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 700;" id="chatTitle">AI Financial Companion</h4>
+              <p style="font-size: 0.75rem; color: var(--text-muted);" id="chatStatus">Connected &bull; Standard mode</p>
+            </div>
+            <div class="badge badge-green">Online</div>
+          </div>
+
+          <!-- Chat messages area -->
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble ai animate-fade-in">
+              <p>Hey there! I'm your LoanLens companion. Ask me anything about your uploaded document! For example, you can ask <strong>"Can this loan become dangerous later?"</strong> or <strong>"Explain late payment terms."</strong></p>
+            </div>
+          </div>
+
+          <!-- Input bar -->
+          <div class="chat-input-bar">
+            <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceInput()" title="Speech-to-Text Input">🎙️</button>
+            <input type="text" id="chatInput" placeholder="Ask about your loan document..." onkeydown="handleEnter(event)">
+            <button class="btn btn-primary btn-sm" onclick="sendChatMessage()" style="border-radius: var(--radius-sm); padding: 12px 20px;">Send 🚀</button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <div class="toast-container" id="toastBox"></div>
+
+  <script>
+    const API = 'http://localhost:5000';
+    let docId = localStorage.getItem('ll_active_doc_id') || "";
+    let sessionId = "session_" + Math.random().toString(36).substr(2, 9);
+    let activeLang = "en";
+
+    // User profile indicator binding
+    const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
+    if(user) {
+      document.getElementById('navCtaArea').innerHTML = `
+        <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+        <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+      `;
+    }
+
+    function logout() {
+      localStorage.removeItem('ll_user');
+      window.location.href = 'index.html';
+    }
+    let isRecording = false;
+    let recognition = null;
+
+    // Speech-to-Text Web API setup
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = function(event) {
+        const text = event.results[0][0].transcript;
+        document.getElementById('chatInput').value = text;
+        stopVoiceListening();
+        sendChatMessage();
+      };
+
+      recognition.onerror = function(event) {
+        toast("Voice recognition error: " + event.error, "error");
+        stopVoiceListening();
+      };
+
+      recognition.onend = function() {
+        stopVoiceListening();
+      };
+    }
+
+    function toggleVoiceInput() {
+      if(!recognition) {
+        toast("Web Speech API is not supported in this browser. Please use Chrome/Safari.", "error");
+        return;
+      }
+
+      if(isRecording) {
+        stopVoiceListening();
+      } else {
+        startVoiceListening();
+      }
+    }
+
+    function startVoiceListening() {
+      isRecording = true;
+      const btn = document.getElementById('voiceBtn');
+      btn.classList.add('active');
+      btn.textContent = "🛑";
+      
+      // Update recognition language based on selector
+      if(activeLang === 'hi') recognition.lang = 'hi-IN';
+      else if(activeLang === 'kn') recognition.lang = 'kn-IN';
+      else if(activeLang === 'ta') recognition.lang = 'ta-IN';
+      else if(activeLang === 'te') recognition.lang = 'te-IN';
+      else if(activeLang === 'ml') recognition.lang = 'ml-IN';
+      else recognition.lang = 'en-US';
+
+      recognition.start();
+      toast("Listening... Speak clearly into your microphone.", "info");
+    }
+
+    function stopVoiceListening() {
+      isRecording = false;
+      const btn = document.getElementById('voiceBtn');
+      btn.classList.remove('active');
+      btn.textContent = "🎙️";
+      if(recognition) recognition.stop();
+    }
+
+    function changeLanguage() {
+      activeLang = document.getElementById('langSelect').value;
+      const title = document.getElementById('chatTitle');
+      const status = document.getElementById('chatStatus');
+      
+      if(activeLang === 'en') {
+        title.textContent = "AI Financial Companion";
+        status.textContent = "Connected • Standard mode";
+      } else {
+        title.textContent = "AI Translator Mode";
+        status.textContent = `Connected • Explaining in regional language`;
+      }
+      
+      toast(`Switched translation target to ${activeLang.toUpperCase()}`, "success");
+    }
+
+    function handleEnter(e) {
+      if(e.key === 'Enter') sendChatMessage();
+    }
+
+    // Chat Message Flow
+    async function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      const message = input.value.trim();
+      if(!message) return;
+
+      // Add user bubble
+      appendBubble(message, 'user');
+      input.value = '';
+
+      // Auto scroll
+      const container = document.getElementById('chatMessages');
+      container.scrollTop = container.scrollHeight;
+
+      // Add loading state
+      const loadingBubble = appendBubble("⏳ Thinking...", 'ai');
+
+      try {
+        const res = await fetch(`${API}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doc_id: docId,
+            message: message,
+            session_id: sessionId,
+            language: activeLang
+          })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Chat failed");
+
+        loadingBubble.remove();
+        appendBubble(data.response, 'ai');
+        container.scrollTop = container.scrollHeight;
+
+      } catch(e) {
+        loadingBubble.remove();
+        appendBubble("❌ Error: " + e.message, 'ai');
+      }
+    }
+
+    function appendBubble(text, sender) {
+      const container = document.getElementById('chatMessages');
+      const bubble = document.createElement('div');
+      bubble.className = `chat-bubble ${sender} animate-fade-in`;
+      bubble.innerHTML = `<p>${text}</p>`;
+      container.appendChild(bubble);
+      return bubble;
+    }
+
+    async function clearConversation() {
+      try {
+        await fetch(`${API}/api/chat/history/${sessionId}`, { method: 'DELETE' });
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = `
+          <div class="chat-bubble ai">
+            <p>Chat history has been cleared. Ask me a fresh query about your loan terms!</p>
+          </div>
+        `;
+        toast("Conversation cleared!", "success");
+      } catch(e) {
+        toast("Failed to clear history", "error");
+      }
+    }
+
+    // Populate Initial Mock Negotiation strategies
+    const mockNegotiationTerms = [
+      {
+        term: "Administrative Levy Waiving",
+        current: "₹15,000 flat handling levy",
+        target: "₹0 to ₹2,500 maximum",
+        probability: "High Probability",
+        ask: "Request full waiver under standard bank promotional rules since you are paying standard upfront processing charges already."
+      },
+      {
+        term: "Foreclosure Penalty Exit Fee",
+        current: "2% of principal outstanding",
+        target: "0% penalty after Year 3",
+        probability: "Medium Probability",
+        ask: "Point out standard competitive bank guidelines that restrict exit penalties for long-term refinancing transfers."
+      },
+      {
+        term: "Interest Rate Floating Margin link",
+        current: "Benchmark plus 1.25% premium",
+        target: "Benchmark plus 0.95% premium",
+        probability: "Medium Probability",
+        ask: "Mention comparable market offers from competitive institutions, showing you have clean credit histories that justify discount margins."
+      }
+    ];
+
+    function populateNegotiations() {
+      const list = document.getElementById('negotiationList');
+      list.innerHTML = '';
+      mockNegotiationTerms.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'negotiation-card';
+        div.innerHTML = `
+          <div style="font-weight:700; font-size:0.92rem; color:var(--text-primary); margin-bottom:4px;">${item.term}</div>
+          <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
+            <span>Current: ${item.current}</span>
+            <span style="color:var(--green); font-weight:600;">Target: ${item.target}</span>
+          </div>
+          <p style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">${item.ask}</p>
+          <div style="margin-top:6px; font-size:0.75rem; font-weight:700; color:var(--blue);">${item.probability}</div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    // Run Negotiation service fetch when doc is loaded
+    async function loadNegotiationService() {
+      if(!docId) {
+        populateNegotiations();
+        return;
+      }
+      try {
+        const res = await fetch(`${API}/api/chat/negotiate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doc_id: docId })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error();
+
+        const list = document.getElementById('negotiationList');
+        list.innerHTML = '';
+        data.negotiable_terms.forEach(item => {
+          const div = document.createElement('div');
+          div.className = 'negotiation-card';
+          div.innerHTML = `
+            <div style="font-weight:700; font-size:0.92rem; color:var(--text-primary); margin-bottom:4px;">${item.term}</div>
+            <div style="display:flex; justify-content:space-between; font-size:0.78rem; color:var(--text-muted); margin-bottom:8px;">
+              <span>Current: ${item.current}</span>
+              <span style="color:var(--green); font-weight:600;">Target: ${item.negotiable_to}</span>
+            </div>
+            <p style="font-size:0.8rem; color:var(--text-secondary); line-height:1.4;">${item.how_to_ask}</p>
+            <div style="margin-top:6px; font-size:0.75rem; font-weight:700; color:var(--blue);">${item.success_probability}</div>
+          `;
+          list.appendChild(div);
+        });
+
+        document.getElementById('negotiationScript').textContent = `"${data.negotiation_script}"`;
+
+      } catch(e) {
+        populateNegotiations();
+      }
+    }
+
+    // Init
+    loadNegotiationService();
+
+    // Toast Alert
+    function toast(msg, type='info') {
+      const c = document.getElementById('toastBox');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+  </script>
+</body>
+</html>

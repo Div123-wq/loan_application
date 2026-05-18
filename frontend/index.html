@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoanLens AI — AI Financial Intelligence Assistant</title>
+  <meta name="description" content="LoanLens AI decodes loan documents — detecting hidden traps, calculating real costs, and explaining legal jargon in plain language." />
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      position: relative; overflow: hidden; padding-top: 64px;
+    }
+    .hero-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(79,142,247,0.12) 0%, transparent 70%),
+                  radial-gradient(ellipse 50% 40% at 85% 80%, rgba(124,58,237,0.08) 0%, transparent 60%);
+    }
+    .grid-lines {
+      position: absolute; inset: 0; z-index: 0; opacity: 0.03;
+      background-image: linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),
+                        linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);
+      background-size: 60px 60px;
+    }
+    .hero-inner {
+      position: relative; z-index: 1;
+      max-width: 1200px; margin: 0 auto; padding: 0 24px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.25);
+      border-radius: var(--radius-full); padding: 6px 14px;
+      font-size: 0.8rem; font-weight: 600; color: var(--blue);
+      margin-bottom: 24px;
+    }
+    .hero-tag .dot { width:6px;height:6px;background:var(--blue);border-radius:50%; }
+    .hero-title { margin-bottom: 20px; }
+    .hero-desc { margin-bottom: 36px; font-size: 1.05rem; max-width: 480px; }
+    .hero-cta { display: flex; gap: 12px; margin-bottom: 48px; }
+    .hero-stats { display: flex; gap: 32px; }
+    .hero-stat .num { font-family:'Inter',sans-serif; font-size:1.8rem; font-weight:800; }
+    .hero-stat .lbl { font-size:0.8rem; color:var(--text-muted); }
+
+    .upload-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-xl); padding: 32px;
+      box-shadow: var(--shadow-card), var(--shadow-glow);
+    }
+    .upload-card-title { font-family:'Inter',sans-serif; font-weight:700; font-size:1.1rem; margin-bottom:6px; }
+    .upload-card-sub { color:var(--text-muted); font-size:.85rem; margin-bottom:20px; }
+    #upload-progress { display:none; text-align:center; padding:16px 0; }
+    .progress-step { display:flex;align-items:center;gap:10px;font-size:.85rem;color:var(--text-muted);padding:6px 0; }
+    .progress-step.active { color:var(--blue); }
+    .progress-step.done { color:var(--green); }
+    #upload-error { display:none; margin-top:16px; color:var(--red); font-size:.9rem; background:rgba(239,68,68,0.1); padding:12px; border-radius:var(--radius-sm); }
+
+    .features-section { padding: 100px 0; background: var(--bg-secondary); }
+    .section-top { text-align:center; margin-bottom:60px; }
+    .section-label { font-size:.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:10px; }
+    .features-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; max-width:1200px; margin:0 auto; padding:0 24px; }
+    .feature-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:28px; transition:all .3s; }
+    .feature-card:hover { border-color:var(--border-accent); transform:translateY(-4px); box-shadow:var(--shadow-blue); }
+    .feature-icon { width:48px;height:48px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:1.5rem;margin-bottom:16px; }
+    .feature-title { font-family:'Inter',sans-serif; font-weight:700; margin-bottom:8px; }
+    .feature-desc { font-size:.88rem; color:var(--text-secondary); line-height:1.6; }
+
+    .how-section { padding:100px 0; }
+    .steps { display:flex; gap:0; max-width:900px; margin:0 auto; padding:0 24px; position:relative; }
+    .steps::before { content:''; position:absolute; top:28px; left:90px; right:90px; height:2px; background:var(--border); }
+    .step { flex:1; text-align:center; position:relative; z-index:1; padding:0 16px; }
+    .step-num { width:56px;height:56px;border-radius:50%;background:var(--grad-blue);color:#fff; font-family:'Inter',sans-serif;font-size:1.3rem;font-weight:800; display:flex;align-items:center;justify-content:center; margin:0 auto 16px; box-shadow:0 0 30px rgba(79,142,247,.3); }
+    .step-title { font-family:'Inter',sans-serif; font-weight:700; margin-bottom:8px; }
+    .step-desc { font-size:.85rem; color:var(--text-secondary); }
+    footer { padding:32px 0; border-top:1px solid var(--border); text-align:center; color:var(--text-muted); font-size:.85rem; }
+
+    @media(max-width:900px){
+      .hero-inner { grid-template-columns:1fr; }
+      .hero-upload { display:none; }
+      .steps { flex-direction:column; gap:32px; }
+      .steps::before { display:none; }
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+  <div class="nav-links">
+    <a href="index.html" class="active">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="simulator.html">Simulator</a>
+    <a href="compare.html">Compare</a>
+    <a href="chat.html">AI Chat</a>
+  </div>
+  <div id="navCtaArea">
+    <button class="nav-cta" onclick="window.location.href='auth.html'">Portal Login</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg"></div><div class="grid-lines"></div>
+  <div class="hero-inner">
+    <div class="animate-fade-up">
+      <div class="hero-tag"><span class="dot"></span> AI Financial Intelligence · GitHub Models</div>
+      <h1 class="hero-title">
+        Your Loan Document<br>
+        <span class="grad-text">Decoded in Seconds.</span><br>
+        Not Summaries —<br>
+        <span class="grad-text-danger">Intelligence.</span>
+      </h1>
+      <p class="hero-desc">LoanLens AI finds hidden traps, calculates the <em>real</em> cost, and explains every clause like a trusted friend — before you sign.</p>
+      <div class="hero-cta">
+        <button class="btn btn-primary" onclick="triggerUploadGuard()">🚀 Analyze My Loan</button>
+        <a href="dashboard.html?demo=1" class="btn btn-secondary">View Demo</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="num grad-text">12+</div><div class="lbl">AI Features</div></div>
+        <div class="hero-stat"><div class="num grad-text">30s</div><div class="lbl">Analysis Time</div></div>
+        <div class="hero-stat"><div class="num grad-text">6</div><div class="lbl">Languages</div></div>
+      </div>
+    </div>
+
+    <div class="hero-upload animate-fade-up" style="animation-delay:.2s">
+      <div class="upload-card">
+        <div class="upload-card-title">🔍 Analyze Your Loan</div>
+        <div class="upload-card-sub">PDF, scanned image, or bank agreement</div>
+        <div class="upload-zone" id="dropZone">
+          <div class="upload-icon">📄</div>
+          <div class="upload-title">Drop your document here</div>
+          <div class="upload-subtitle">or click to browse files</div>
+          <div class="upload-formats">
+            <span class="upload-format-tag">PDF</span>
+            <span class="upload-format-tag">JPG</span>
+            <span class="upload-format-tag">PNG</span>
+            <span class="upload-format-tag">WEBP</span>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff,.bmp" style="display:none" />
+
+        <div id="upload-progress">
+          <div class="loading-spinner" style="margin:0 auto 16px"></div>
+          <div style="font-weight:600;margin-bottom:12px" id="prog-label">Analyzing document…</div>
+          <div class="progress-step active" id="ps1"><span>⏳</span> Extracting text</div>
+          <div class="progress-step" id="ps2"><span>○</span> Detecting hidden traps</div>
+          <div class="progress-step" id="ps3"><span>○</span> Calculating risk score</div>
+          <div class="progress-step" id="ps4"><span>○</span> Computing real cost</div>
+          <div class="progress-step" id="ps5"><span>○</span> Building dashboard</div>
+        </div>
+        <div id="upload-error"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features-section">
+  <div class="section-top">
+    <div class="section-label">Powered by GitHub Models GPT-4o</div>
+    <h2><span class="grad-text">12 AI Features</span> That Protect You</h2>
+    <p style="color:var(--text-secondary);max-width:500px;margin:.8rem auto 0">Everything hidden in your loan document — exposed, explained, and quantified.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(239,68,68,.1)">⚠️</div><div class="feature-title">Hidden Trap Detector</div><div class="feature-desc">AI identifies penalty clauses, foreclosure charges, and variable rate risks most people ignore before signing.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(79,142,247,.1)">💬</div><div class="feature-title">Explain Like a Friend</div><div class="feature-desc">"Bank reserves right to revise rates" → "The bank can increase your EMI." Plain language, zero jargon.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(245,158,11,.1)">🎯</div><div class="feature-title">Risk Meter</div><div class="feature-desc">Visual risk indicator: Low / Medium / High / Critical. Sub-scores for penalties, stability, and fairness.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(16,185,129,.1)">💰</div><div class="feature-title">Reality Cost Calculator</div><div class="feature-desc">See the full truth — total repayment, hidden fees, and compound interest impact over your loan tenure.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(124,58,237,.1)">🔮</div><div class="feature-title">What-If Simulator</div><div class="feature-desc">"What if I miss 2 EMIs?" Instant simulation of penalties, credit score drops, and future repayment changes.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(6,182,212,.1)">⚔️</div><div class="feature-title">Loan Comparison Battle</div><div class="feature-desc">Upload 2-3 loan offers. AI compares cost, risk, hidden terms — and picks the winner.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(239,68,68,.1)">🕵️</div><div class="feature-title">Fraud Clause Detector</div><div class="feature-desc">Flags vague wording, abnormal fees, misleading language. Confidence scores per flag.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(245,158,11,.1)">🫀</div><div class="feature-title">Financial Pressure Detector</div><div class="feature-desc">Enter salary + expenses. AI predicts your stress months and when your budget might break.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(79,142,247,.1)">🌏</div><div class="feature-title">6 Regional Languages</div><div class="feature-desc">Get your loan explained in Hindi, Kannada, Tamil, Telugu, Malayalam, or Marathi.</div></div>
+  </div>
+</section>
+
+<section class="how-section">
+  <div class="section-top" style="padding:0 24px">
+    <div class="section-label">Simple Process</div>
+    <h2>How <span class="grad-text">LoanLens AI</span> Works</h2>
+  </div>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-title">Upload Document</div><div class="step-desc">PDF, scanned image, or bank agreement</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">AI Reads It</div><div class="step-desc">OCR extracts text, AI identifies loan structure</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-title">Intelligence Generated</div><div class="step-desc">Risk scores, traps, costs, simulations computed</div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-title">Your Dashboard</div><div class="step-desc">Clear visual report with actionable advice</div></div>
+  </div>
+</section>
+
+<footer><div>LoanLens AI &mdash; Built with GitHub Models &bull; <span class="grad-text">Financial Intelligence, Simplified.</span></div></footer>
+<div class="toast-container" id="toastBox"></div>
+
+<script>
+const API = 'http://localhost:5000';
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+// Profile logic
+const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
+if(user) {
+  document.getElementById('navCtaArea').innerHTML = `
+    <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+    <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+  `;
+}
+
+function logout() {
+  localStorage.removeItem('ll_user');
+  window.location.reload();
+}
+
+function triggerUploadGuard() {
+  if(!localStorage.getItem('ll_user')) {
+    toast("🔒 Portal Login required to analyze documents!", "info");
+    setTimeout(() => window.location.href = 'auth.html', 1000);
+    return;
+  }
+  fileInput.click();
+}
+
+dropZone.addEventListener('click', () => triggerUploadGuard());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+function step(n, s) {
+  const el = document.getElementById('ps'+n);
+  if (!el) return;
+  el.className = 'progress-step ' + s;
+  el.querySelector('span').textContent = s==='done'?'✅':s==='active'?'⏳':'○';
+}
+
+async function handleFile(file) {
+  if(!localStorage.getItem('ll_user')) {
+    window.location.href = 'auth.html';
+    return;
+  }
+  dropZone.style.display = 'none';
+  document.getElementById('upload-progress').style.display = 'block';
+  document.getElementById('upload-error').style.display = 'none';
+  step(1,'active');
+
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const ur = await fetch(`${API}/api/upload`, {method:'POST', body:fd});
+    const ud = await ur.json();
+    if (!ur.ok) throw new Error(ud.error || 'Upload failed');
+    step(1,'done'); step(2,'active');
+    localStorage.setItem('ll_doc_id', ud.doc_id);
+    localStorage.setItem('ll_filename', ud.filename);
+
+    setTimeout(()=>{ step(2,'done'); step(3,'active'); }, 4000);
+    setTimeout(()=>{ step(3,'done'); step(4,'active'); }, 9000);
+    setTimeout(()=>{ step(4,'done'); step(5,'active'); }, 14000);
+
+    const ar = await fetch(`${API}/api/analyze/${ud.doc_id}`, {method:'POST'});
+    const ad = await ar.json();
+    if (!ar.ok) throw new Error(ad.error || 'Analysis failed');
+    step(5,'done');
+    localStorage.setItem('ll_analysis', JSON.stringify(ad));
+    toast('✅ Done! Loading dashboard…','success');
+    setTimeout(() => window.location.href='dashboard.html', 800);
+  } catch(e) {
+    dropZone.style.display = 'block';
+    document.getElementById('upload-progress').style.display = 'none';
+    const err = document.getElementById('upload-error');
+    err.textContent = '⚠️ ' + e.message; err.style.display='block';
+    toast('❌ ' + e.message, 'error');
+  }
+}
+
+function toast(msg, type='info') {
+  const c = document.getElementById('toastBox');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`; t.textContent = msg;
+  c.appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+</script>
+</body>
+</html>
+

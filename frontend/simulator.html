@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanLens AI — What-If Simulator &amp; Stress Detector</title>
+  <script>
+    if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
+      window.location.href = 'auth.html';
+    }
+  </script>
+  <link rel="stylesheet" href="css/global.css">
+  <style>
+    .simulator-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .scenario-btn {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      text-align: left;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .scenario-btn:hover {
+      border-color: var(--blue);
+      background: var(--blue-glow);
+    }
+    .scenario-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .timeline-list {
+      position: relative;
+      padding-left: 20px;
+      border-left: 2px solid var(--border);
+      margin-top: 20px;
+    }
+    .timeline-item {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    .timeline-item::before {
+      content: "";
+      position: absolute;
+      left: -27px;
+      top: 4px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--border);
+      border: 2px solid var(--bg-card);
+    }
+    .timeline-item.medium::before { background: var(--amber); }
+    .timeline-item.high::before { background: var(--orange); }
+    .timeline-item.critical::before { background: var(--red); }
+    
+    .timeline-time {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .timeline-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-top: 2px;
+    }
+    .timeline-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .month-stress-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .month-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 6px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .month-box.low { border-left: 3px solid var(--green); }
+    .month-box.medium { border-left: 3px solid var(--amber); }
+    .month-box.high { border-left: 3px solid var(--red); }
+    
+    .month-name { font-size: 0.8rem; font-weight: 600; }
+    .month-status { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="simulator.html" class="active">Simulator</a>
+      <a href="compare.html">Compare</a>
+      <a href="chat.html">AI Chat</a>
+    </div>
+    <div id="navCtaArea">
+      <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-label">Document Intelligence</div>
+      <button class="sidebar-item" onclick="window.location.href='dashboard.html'">
+        <span class="icon">📊</span> Return Dashboard
+      </button>
+
+      <div class="sidebar-label">Simulator Tools</div>
+      <button class="sidebar-item active">
+        <span class="icon">🔮</span> What-If Simulator
+      </button>
+      <button class="sidebar-item" onclick="scrollToElement('pressure-detector')">
+        <span class="icon">🫀</span> Financial Pressure
+      </button>
+      <button class="sidebar-item" onclick="scrollToElement('panic-predictor')">
+        <span class="icon">📅</span> Panic Predictor
+      </button>
+    </aside>
+
+    <main class="main-content">
+      <div class="section-header">
+        <div>
+          <h2 class="grad-text">🔮 What-If Financial Simulator</h2>
+          <p style="font-size: 0.9rem; margin-top: 4px;">Predict penalties, rate adjustments, and stress scenarios using loan-specific models.</p>
+        </div>
+      </div>
+
+      <div class="simulator-layout">
+        <!-- Input Scenario -->
+        <div class="card">
+          <h3 class="card-title">✨ Define Scenario</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">Type a custom scenario or choose a quick template below.</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">Your Scenario</label>
+            <input type="text" id="scenarioInput" placeholder="e.g., What if I miss 2 payments?" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; color: white; font-family: inherit; font-size: 0.95rem; width: 100%;">
+          </div>
+
+          <div style="margin-top: 16px;">
+            <button class="btn btn-primary" style="width: 100%;" id="simulateBtn" onclick="runSimulation()">🔮 Run AI Simulation</button>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">Scenario Templates</label>
+          <div class="scenario-grid">
+            <button class="scenario-btn" onclick="setTemplate('What if I miss 2 EMI payments?')">🔴 Missed Payments: "What if I miss 2 EMI payments?"</button>
+            <button class="scenario-btn" onclick="setTemplate('What happens if I foreclosure/prepay the whole loan in year 5?')">🔄 Foreclosure: "What if I prepay the loan in year 5?"</button>
+            <button class="scenario-btn" onclick="setTemplate('What if benchmark rates rise by 2% next year?')">📈 Rate Jump: "What if float rates rise by 2%?"</button>
+            <button class="scenario-btn" onclick="setTemplate('Can I request a 3-month EMI holiday?')">🏖️ EMI Holiday: "What if I request a 3-month holiday?"</button>
+          </div>
+        </div>
+
+        <!-- Simulation Output -->
+        <div class="card" id="simulationResult" style="min-height: 400px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+          <div id="simPlaceholder" style="text-align: center;">
+            <div style="font-size: 3rem;">🔮</div>
+            <h3 style="margin-top: 12px;">Simulation Output</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 250px; margin: 8px auto 0;">Enter a scenario on the left and click 'Run AI Simulation' to calculate results.</p>
+          </div>
+
+          <!-- Active Output (Hidden by Default) -->
+          <div id="simContent" style="display: none; width: 100%; height: 100%;">
+            <div class="badge badge-red" id="simSeverity" style="float: right;">High Impact</div>
+            <h3 class="card-title">📈 AI Simulation Ledger</h3>
+            <p id="simSummary" style="font-size: 0.9rem; margin-top: 8px; line-height: 1.6; color: var(--text-secondary);">If you miss 2 payments, the immediate impact includes penalty compound accruals alongside negative reportings to bureau databases.</p>
+
+            <div class="stat-grid" style="margin: 20px 0 10px;">
+              <div class="stat-card">
+                <div class="stat-label">Penalty Incurred</div>
+                <div class="stat-value" id="simPenalty" style="font-size: 1.2rem; color: var(--red);">₹4,340</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Credit Score Impact</div>
+                <div class="stat-value" id="simCredit" style="font-size: 1.2rem; color: var(--orange);">-50 to -80 pts</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Extra Cost</div>
+                <div class="stat-value" id="simExtraCost" style="font-size: 1.2rem; color: var(--amber);">₹15,000</div>
+              </div>
+            </div>
+
+            <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary);">📅 Simulation Event Timeline</h4>
+            <div class="timeline-list" id="simTimeline">
+              <!-- Timeline Items Dynamic -->
+            </div>
+
+            <div class="section-divider"></div>
+            <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--green); margin-bottom: 8px;">🛡️ AI Safe Path Recommendations</h4>
+            <ul id="simAdvice" style="font-size: 0.85rem; color: var(--text-secondary); padding-left: 20px; display: flex; flex-direction: column; gap: 4px;">
+              <!-- Advice Dynamic -->
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="margin: 48px 0 32px;"></div>
+
+      <!-- 2. FINANCIAL PRESSURE DETECTOR -->
+      <div class="section-header" id="pressure-detector">
+        <div>
+          <h2 class="grad-text">🫀 Emotional Financial Pressure Detector</h2>
+          <p style="font-size: 0.9rem; margin-top: 4px;">Predict repayment stress, lifestyle impact, and budgeting safe zones based on your monthly cash flow.</p>
+        </div>
+      </div>
+
+      <div class="simulator-layout">
+        <!-- Inputs -->
+        <div class="card">
+          <h3 class="card-title">📝 Your Household Cash Flow</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide basic monthly values so AI can run financial pressure tests.</p>
+
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+              <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Net Salary (₹)</label>
+                <input type="number" id="inputSalary" value="120000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+              </div>
+              <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Expenses (₹)</label>
+                <input type="number" id="inputExpenses" value="45000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px;">
+              <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Dependents Count</label>
+                <input type="number" id="inputDependents" value="3" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+              </div>
+              <div>
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Additional Major Obligations</label>
+                <input type="text" id="inputObligations" value="School fees in June, Rent" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="runPressureAnalysis()">🫀 Calculate Stress Index</button>
+          </div>
+        </div>
+
+        <!-- Output Stress -->
+        <div class="card" id="pressureResult">
+          <div class="card-header">
+            <h3 class="card-title">📊 Repayment Stress Level</h3>
+            <span class="badge badge-amber" id="stressLevelBadge">Medium</span>
+          </div>
+
+          <div style="display: flex; gap: 24px; align-items: center; margin-bottom: 16px;">
+            <div style="font-size: 3.5rem; font-weight: 900; line-height: 1;" class="grad-text-danger" id="stressScoreText">62%</div>
+            <div style="font-size: 0.88rem; color: var(--text-secondary);" id="stressVerdict">
+              Your debt-to-income balance places you at a medium risk tier. Your savings buffer will buffer normal cashflow variations, but high expenditure months require active planning.
+            </div>
+          </div>
+
+          <div class="section-divider" style="margin: 16px 0;"></div>
+
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">📅 Interactive Annual Pressure Calendar</h4>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Predicted seasonal risk periods overlaid against typical Indian household milestones.</p>
+          
+          <div class="month-stress-grid" id="calendarGrid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="margin: 48px 0 32px;"></div>
+ 
+      <!-- 3. DEADLINE PANIC PREDICTOR -->
+      <div class="section-header" id="panic-predictor">
+        <div>
+          <h2 class="grad-text">📅 Deadline Panic Predictor</h2>
+          <p style="font-size: 0.9rem; margin-top: 4px;">Long-term timeline forecasting showing exact intersections of EMI milestones and external life events.</p>
+        </div>
+      </div>
+
+      <div class="simulator-layout">
+        <!-- Inputs -->
+        <div class="card">
+          <h3 class="card-title">📝 Loan Timeline Inputs</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Input loan start and income values to predict seasonal threat intersections.</p>
+
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div>
+              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Loan Start Date</label>
+              <input type="date" id="inputStartDate" value="2026-05-18" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+            </div>
+            <div>
+              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Income / Salary (₹)</label>
+              <input type="number" id="inputPanicSalary" value="120000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+            </div>
+
+            <button class="btn btn-primary" id="panicPredictBtn" onclick="runDeadlinePanicPredictor()">📅 Predict Panic Milestones</button>
+          </div>
+        </div>
+
+        <!-- Output Forecast & Warnings -->
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom: 16px;">🔍 5-Year Milestone Intersections &amp; Advisory</h3>
+          
+          <div class="stat-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-bottom: 24px;">
+            <div class="stat-card safe">
+              <div class="stat-label">Safe Buffer Years</div>
+              <div class="stat-value" id="forecastEasyYears">Years 1 &amp; 2</div>
+              <div class="stat-note">Regular cash flow matching</div>
+            </div>
+            <div class="stat-card danger">
+              <div class="stat-label">Vulnerable Growth Zone</div>
+              <div class="stat-value" id="forecastChallengingYears">Year 3</div>
+              <div class="stat-note">Refinancing review period</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Outpace Forecast</div>
+              <div class="stat-value">Year 5+</div>
+              <div class="stat-note" id="forecastReason">EMI stress shrinks as income grows</div>
+            </div>
+          </div>
+
+          <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px;">Timeline Warnings &amp; Smart Reserves Advice</h4>
+          <div id="deadlineWarnings" style="display: flex; flex-direction: column; gap: 12px;">
+            <div class="trap-card severity-high" style="margin-bottom: 0;">
+              <div class="trap-title"><span class="badge badge-orange">High Concern</span> Season: June 2027</div>
+              <div class="trap-plain">School admission fees coincide with standard quarterly rate spread conversions. Anticipated extra cash outlay: ₹15,000.</div>
+              <div class="trap-advice" style="margin-top: 6px;">🛡️ Safe Reserve: Save ₹5,000 extra per month beginning March 2027 to cover school costs easily.</div>
+            </div>
+          </div>
+
+          <div class="section-divider" style="margin: 16px 0;"></div>
+          <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--green); margin-bottom: 8px;">🛡️ AI Strategic Smart Tip</h4>
+          <div style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4;" id="panicSmartTip">
+            Save up to 3x of your monthly EMI as a ring-fenced emergency buffer reserve before accepting MCLR floating rate agreements.
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast-container" id="toastBox"></div>
+
+  <script>
+    const API = 'http://localhost:5000';
+    let docId = localStorage.getItem('ll_active_doc_id') || "";
+
+    // User profile indicator binding
+    const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
+    if(user) {
+      document.getElementById('navCtaArea').innerHTML = `
+        <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+        <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+      `;
+    }
+
+    function logout() {
+      localStorage.removeItem('ll_user');
+      window.location.href = 'index.html';
+    }
+
+    // Set scenario from templates
+    function setTemplate(txt) {
+      document.getElementById('scenarioInput').value = txt;
+    }
+
+    function scrollToElement(id) {
+      const el = document.getElementById(id);
+      if(el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ── What-If Simulator Action ────────────────────────
+    async function runSimulation() {
+      const scenario = document.getElementById('scenarioInput').value.trim();
+      if(!scenario) {
+        toast("Please type a scenario or select a template!", "error");
+        return;
+      }
+
+      const btn = document.getElementById('simulateBtn');
+      btn.textContent = "⏳ Calculating AI Simulation...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/api/simulate/whatif`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doc_id: docId, scenario: scenario })
+        });
+        const data = await res.json();
+        
+        if(!res.ok) throw new Error(data.error || "Simulation failed");
+
+        // Display results
+        document.getElementById('simPlaceholder').style.display = 'none';
+        const content = document.getElementById('simContent');
+        content.style.display = 'block';
+
+        document.getElementById('simSeverity').textContent = data.severity_level + " Impact";
+        document.getElementById('simSummary').textContent = data.plain_summary;
+        
+        // Stats
+        document.getElementById('simPenalty').textContent = data.immediate_impact.penalty_amount;
+        document.getElementById('simCredit').textContent = data.credit_score_impact;
+        document.getElementById('simExtraCost').textContent = data.total_extra_payment;
+
+        // Timeline
+        const timeline = document.getElementById('simTimeline');
+        timeline.innerHTML = '';
+        data.timeline_effects.forEach(item => {
+          const div = document.createElement('div');
+          div.className = `timeline-item ${item.severity.toLowerCase()}`;
+          div.innerHTML = `
+            <div class="timeline-time">Month ${item.month}</div>
+            <div class="timeline-title">${item.event}</div>
+            <div class="timeline-desc">Cost: ${item.cost} &bull; Severity: ${item.severity.toUpperCase()}</div>
+          `;
+          timeline.appendChild(div);
+        });
+
+        // Advice
+        const advice = document.getElementById('simAdvice');
+        advice.innerHTML = '';
+        data.advice.forEach(adv => {
+          const li = document.createElement('li');
+          li.textContent = adv;
+          advice.appendChild(li);
+        });
+
+        toast("✅ Simulation computed successfully!", "success");
+
+      } catch(e) {
+        toast("❌ " + e.message, "error");
+      } finally {
+        btn.textContent = "🔮 Run AI Simulation";
+        btn.disabled = false;
+      }
+    }
+
+    // ── Pressure Analysis Action ────────────────────────
+    async function runPressureAnalysis() {
+      const salary = parseFloat(document.getElementById('inputSalary').value);
+      const expenses = parseFloat(document.getElementById('inputExpenses').value);
+      const dependents = parseInt(document.getElementById('inputDependents').value);
+      const obligations = document.getElementById('inputObligations').value;
+
+      try {
+        const res = await fetch(`${API}/api/simulate/pressure`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doc_id: docId,
+            salary: salary,
+            expenses: expenses,
+            family_size: dependents,
+            obligations: obligations
+          })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Stress calculation failed");
+
+        // Display results
+        document.getElementById('stressLevelBadge').textContent = data.stress_level;
+        document.getElementById('stressScoreText').textContent = data.stress_score + "%";
+        document.getElementById('stressVerdict').textContent = data.verdict;
+
+        if(data.stress_level.toLowerCase().includes('high')) {
+          document.getElementById('stressLevelBadge').className = "badge badge-red";
+        } else if(data.stress_level.toLowerCase().includes('medium')) {
+          document.getElementById('stressLevelBadge').className = "badge badge-amber";
+        } else {
+          document.getElementById('stressLevelBadge').className = "badge badge-green";
+        }
+
+        // Calendar Grid
+        const grid = document.getElementById('calendarGrid');
+        grid.innerHTML = '';
+        data.monthly_calendar.forEach(cal => {
+          const div = document.createElement('div');
+          const stressClass = cal.stress.toLowerCase();
+          div.className = `month-box ${stressClass}`;
+          div.innerHTML = `
+            <div class="month-name">${cal.month}</div>
+            <div class="month-status" style="color: ${stressClass === 'high' ? 'var(--red)' : stressClass === 'medium' ? 'var(--amber)' : 'var(--green)'};">${cal.stress}</div>
+            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; line-height: 1.1;">${cal.note}</div>
+          `;
+          grid.appendChild(div);
+        });
+
+        toast("✅ Stress levels recalculated!", "success");
+
+      } catch(e) {
+        toast("❌ " + e.message, "error");
+      }
+    }
+
+    // Populate Initial Mock Calendar Out-of-the-Box
+    const initialCal = [
+      { month: "January", stress: "Low", note: "Normal spending" },
+      { month: "February", stress: "Low", note: "Normal spending" },
+      { month: "March", stress: "High", note: "Tax filing season" },
+      { month: "April", stress: "Medium", note: "Standard reserves" },
+      { month: "May", stress: "Medium", note: "Vacation outlay" },
+      { month: "June", stress: "High", note: "School fees impact" },
+      { month: "July", stress: "Medium", note: "Normal spending" },
+      { month: "August", stress: "Low", note: "Normal spending" },
+      { month: "September", stress: "Medium", note: "Festival preps" },
+      { month: "October", stress: "High", note: "Diwali purchases" },
+      { month: "November", stress: "Medium", note: "Post-festival bill" },
+      { month: "December", stress: "High", note: "Holiday spending" }
+    ];
+
+    const grid = document.getElementById('calendarGrid');
+    initialCal.forEach(cal => {
+      const div = document.createElement('div');
+      const stressClass = cal.stress.toLowerCase();
+      div.className = `month-box ${stressClass}`;
+      div.innerHTML = `
+        <div class="month-name">${cal.month}</div>
+        <div class="month-status" style="color: ${stressClass === 'high' ? 'var(--red)' : stressClass === 'medium' ? 'var(--amber)' : 'var(--green)'};">${cal.stress}</div>
+        <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; line-height: 1.1;">${cal.note}</div>
+      `;
+      grid.appendChild(div);
+    });
+
+    // ── Deadline Panic Predictor Action ─────────────────
+    async function runDeadlinePanicPredictor() {
+      const startDate = document.getElementById('inputStartDate').value;
+      const salary = parseFloat(document.getElementById('inputPanicSalary').value) || 50000;
+
+      const btn = document.getElementById('panicPredictBtn');
+      btn.textContent = "⏳ Predicting Timelines...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/api/simulate/deadline`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            doc_id: docId,
+            start_date: startDate,
+            salary: salary
+          })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Milestone prediction failed");
+
+        // Update forecast stats
+        document.getElementById('forecastEasyYears').textContent = "Years " + data["5_year_forecast"].easy_years.join(" & ");
+        document.getElementById('forecastChallengingYears').textContent = "Years " + data["5_year_forecast"].challenging_years.join(" & ");
+        document.getElementById('forecastReason').textContent = data["5_year_forecast"].reason;
+
+        // Warnings list
+        const container = document.getElementById('deadlineWarnings');
+        container.innerHTML = '';
+        
+        // Render Panic Periods
+        data.panic_periods.forEach(panic => {
+          const card = document.createElement('div');
+          card.className = "trap-card severity-high";
+          card.style.marginBottom = "0";
+          card.innerHTML = `
+            <div class="trap-title"><span class="badge badge-orange">${panic.risk_level} Concern</span> Season: ${panic.period}</div>
+            <div class="trap-plain">${panic.reason} Anticipated extra cost: ${panic.estimated_shortfall}.</div>
+            <div class="trap-advice" style="margin-top: 6px;">🛡️ Actionable Tip: ${panic.advice}</div>
+          `;
+          container.appendChild(card);
+        });
+
+        // Render Milestones
+        data.upcoming_milestones.forEach(mile => {
+          const card = document.createElement('div');
+          card.className = "trap-card severity-low";
+          card.style.marginBottom = "0";
+          card.innerHTML = `
+            <div class="trap-title"><span class="badge badge-green">Milestone</span> Target Date: ${mile.date}</div>
+            <div class="trap-plain">${mile.event} &bull; Cumulative impact: ${mile.financial_note}</div>
+          `;
+          container.appendChild(card);
+        });
+
+        // Smart Tip
+        document.getElementById('panicSmartTip').textContent = data.smart_tip;
+
+        toast("✅ Milestone panic roadmap computed!", "success");
+
+      } catch(e) {
+        toast("❌ " + e.message, "error");
+      } finally {
+        btn.textContent = "📅 Predict Panic Milestones";
+        btn.disabled = false;
+      }
+    }
+
+    // Toast Alert
+    function toast(msg, type='info') {
+      const c = document.getElementById('toastBox');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+  </script>
+</body>
+</html>

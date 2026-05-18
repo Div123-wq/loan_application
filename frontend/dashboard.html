@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanLens AI — Interactive Dashboard</title>
+  <script>
+    if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
+      window.location.href = 'auth.html';
+    }
+  </script>
+  <link rel="stylesheet" href="css/global.css">
+  <style>
+    /* Dashboard specific styling */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .risk-meter-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+    }
+    .subscore-grid {
+      width: 100%;
+      margin-top: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .friend-explain-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .explain-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--bg-card);
+      transition: all 0.2s;
+    }
+    .explain-card:hover {
+      border-color: var(--border-accent);
+    }
+    .explain-header {
+      padding: 12px 18px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+    }
+    .explain-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+    .explain-pane {
+      padding: 18px;
+      font-size: 0.9rem;
+    }
+    .explain-pane.legal {
+      border-right: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+    .explain-pane.friendly {
+      background: var(--blue-glow);
+      color: var(--text-primary);
+      position: relative;
+    }
+    .explain-pane.friendly::before {
+      content: "💡 FRIENDLY EXPLANATION";
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+    }
+    .cost-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .shock-card {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(249, 115, 22, 0.05));
+      border: 1px dashed var(--red);
+      padding: 20px;
+      border-radius: var(--radius-lg);
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .shock-icon {
+      font-size: 2.5rem;
+    }
+    .shock-text h4 {
+      color: var(--red);
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 4px;
+    }
+    .shock-text p {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg-card);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--bg-secondary);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .suspicious-card {
+      border-left: 3px solid var(--orange);
+      background: linear-gradient(90deg, rgba(249, 115, 22, 0.05) 0%, var(--bg-card) 100%);
+    }
+    .suspicious-standard {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      border-top: 1px dashed var(--border);
+      padding-top: 8px;
+    }
+    .demo-banner {
+      background: var(--grad-blue);
+      color: white;
+      padding: 10px 24px;
+      border-radius: var(--radius-md);
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    .demo-banner button {
+      background: white;
+      color: var(--bg-primary);
+      border: none;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="compare.html">Compare</a>
+      <a href="chat.html">AI Chat</a>
+    </div>
+    <div id="navCtaArea">
+      <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-label">Document Sections</div>
+      <button class="sidebar-item active" onclick="switchSection('overview')">
+        <span class="icon">📊</span> Overview
+      </button>
+      <button class="sidebar-item" onclick="switchSection('traps')">
+        <span class="icon">⚠️</span> Hidden Traps
+      </button>
+      <button class="sidebar-item" onclick="switchSection('costs')">
+        <span class="icon">💰</span> Reality Cost
+      </button>
+      <button class="sidebar-item" onclick="switchSection('explain')">
+        <span class="icon">💬</span> Explain Mode
+      </button>
+      <button class="sidebar-item" onclick="switchSection('suspicious')">
+        <span class="icon">🕵️</span> Suspicious Alerts
+      </button>
+      <button class="sidebar-item" onclick="switchSection('trust')">
+        <span class="icon">🛡️</span> Trust Scores
+      </button>
+
+      <div class="sidebar-label">Intelligence Tools</div>
+      <button class="sidebar-item" onclick="window.location.href='simulator.html'">
+        <span class="icon">🔮</span> What-If Simulator
+      </button>
+      <button class="sidebar-item" onclick="window.location.href='compare.html'">
+        <span class="icon">⚔️</span> Loan Battle
+      </button>
+      <button class="sidebar-item" onclick="window.location.href='chat.html'">
+        <span class="icon">🤖</span> AI Friend Chat
+      </button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Demo Active Banner -->
+      <div id="demoBanner" class="demo-banner" style="display:none;">
+        <span>👉 Showing Demo Mode. Upload your own loan document to analyze custom data!</span>
+        <button onclick="window.location.href='index.html'">Upload File</button>
+      </div>
+
+      <!-- Document Title -->
+      <div class="section-header">
+        <div>
+          <span class="badge badge-blue" id="docTypeBadge">Home Loan</span>
+          <h2 style="margin-top: 8px;" id="docTitle">Loan Agreement Analysis</h2>
+          <p id="docLender" style="font-size: 0.9rem; margin-top: 4px;">Lender: State Bank of India</p>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 0.8rem; color: var(--text-muted);">DATE ANALYZED</div>
+          <div style="font-weight: 600; font-size: 0.95rem;" id="docDate">18 May 2026</div>
+        </div>
+      </div>
+
+      <div class="section-divider" style="margin: 20px 0;"></div>
+
+      <!-- 1. OVERVIEW SECTION -->
+      <div id="section-overview" class="section-content animate-fade-in">
+        <div class="dashboard-grid">
+          <!-- Overview Details -->
+          <div class="card">
+            <h3 class="card-title">🔍 AI Executive Summary</h3>
+            <p style="margin-top: 12px; font-size: 0.95rem; line-height: 1.7;" id="summaryText">
+              This home loan features a competitive initial fixed interest rate but transitions to a floating structure in the third year, introducing variable payment risk. Multiple standard pre-payment and foreclosure penalties apply which could limit refinancing flexibility.
+            </p>
+
+            <div class="section-divider" style="margin: 24px 0;"></div>
+
+            <h3 class="card-title" style="margin-bottom: 16px;">🔑 Extracted Key Metrics</h3>
+            <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+              <div class="stat-card">
+                <div class="stat-label">Loan Amount</div>
+                <div class="stat-value grad-text" id="metricAmount">₹50,00,000</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Interest Rate</div>
+                <div class="stat-value grad-text" id="metricRate">8.5%</div>
+                <div class="stat-note" id="metricRateType">Floating</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Monthly EMI</div>
+                <div class="stat-value grad-text" id="metricEMI">₹43,391</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Tenure</div>
+                <div class="stat-value grad-text" id="metricTenure">20 Years</div>
+                <div class="stat-note" id="metricTenureMonths">240 Months</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Risk Meter -->
+          <div class="card risk-meter-card">
+            <h3 class="card-title" style="margin-bottom: 20px;">🛡️ Overall Risk Meter</h3>
+            <div class="risk-meter-wrap">
+              <svg class="risk-meter-svg" viewBox="0 0 100 100">
+                <!-- Background track -->
+                <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--border)" stroke-width="8" stroke-dasharray="251.2" />
+                <!-- Active color segment -->
+                <circle id="riskMeterCircle" cx="50" cy="50" r="40" fill="transparent" stroke="var(--amber)" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="100" stroke-linecap="round" style="transform: rotate(-90deg); transform-origin: 50% 50%;" />
+              </svg>
+              <div class="risk-label">
+                <div class="risk-score-text" id="riskScore">60</div>
+                <div class="risk-level-text" id="riskLevel">Medium Risk</div>
+              </div>
+            </div>
+
+            <div class="subscore-grid">
+              <div class="progress-wrap">
+                <div class="progress-label">
+                  <span>Penalty Threat</span>
+                  <span id="scorePenalty">80%</span>
+                </div>
+                <div class="progress-bar">
+                  <div id="barPenalty" class="progress-fill" style="width: 80%; background: var(--grad-danger);"></div>
+                </div>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-label">
+                  <span>Interest Stability</span>
+                  <span id="scoreInterest">40%</span>
+                </div>
+                <div class="progress-bar">
+                  <div id="barInterest" class="progress-fill" style="width: 40%; background: var(--grad-amber);"></div>
+                </div>
+              </div>
+              <div class="progress-wrap">
+                <div class="progress-label">
+                  <span>Fairness Score</span>
+                  <span id="scoreFairness">70%</span>
+                </div>
+                <div class="progress-bar">
+                  <div id="barFairness" class="progress-fill" style="width: 70%; background: var(--grad-safe);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. HIDDEN TRAPS SECTION -->
+      <div id="section-traps" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 16px;">
+          <div>
+            <h3 class="card-title">⚠️ Hidden Trap Detector</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">AI-identified clauses borrower should negotiate or carefully consider.</p>
+          </div>
+        </div>
+        <div id="trapsContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- 3. REALITY COST SECTION -->
+      <div id="section-costs" class="section-content animate-fade-in" style="display:none;">
+        <div class="shock-card">
+          <div class="shock-icon">🚨</div>
+          <div class="shock-text">
+            <h4>True Financial Repayment Impact</h4>
+            <p id="shockStatement">You will repay ₹54.1L extra in compound interest alone — double the actual money you borrowed!</p>
+          </div>
+        </div>
+
+        <div class="cost-grid">
+          <div class="stat-card">
+            <div class="stat-label">Principal Amount</div>
+            <div class="stat-value grad-text" id="costPrincipal">₹50,00,000</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-label">Total Repayment Amount</div>
+            <div class="stat-value grad-text" id="costTotalPayment">₹1,04,13,840</div>
+          </div>
+          <div class="stat-card danger">
+            <div class="stat-label">Total Extra Interest</div>
+            <div class="stat-value grad-text" id="costInterest">₹54,13,840</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-label">Interest % of Principal</div>
+            <div class="stat-value grad-text" id="costPercentage">108.3%</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title" style="margin-bottom: 16px;">📅 Year-by-Year Repayment Amortization Forecast</h3>
+          <div class="table-container">
+            <table id="amortizationTable">
+              <thead>
+                <tr>
+                  <th>Year</th>
+                  <th>EMI Paid</th>
+                  <th>Interest Paid</th>
+                  <th>Principal Paid</th>
+                  <th>Remaining Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. EXPLAIN MODE SECTION -->
+      <div id="section-explain" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 20px;">
+          <div>
+            <h3 class="card-title">💬 Explain Like a Friend Mode</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">Translating confusing legalese and banker jargon into plain English explanations.</p>
+          </div>
+        </div>
+        <div class="friend-explain-container" id="explanationsContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- 5. SUSPICIOUS ALERTS SECTION -->
+      <div id="section-suspicious" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 16px;">
+          <div>
+            <h3 class="card-title">🕵️ AI Fraud &amp; Suspicious Clause Detector</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">Flags unusually high fees, vague wording, or abnormalities against industry standards.</p>
+          </div>
+          <span class="badge badge-red" id="overallSuspicion">Minor Concerns</span>
+        </div>
+        <div id="suspiciousContainer">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <!-- 6. TRUST SCORES SECTION -->
+      <div id="section-trust" class="section-content animate-fade-in" style="display:none;">
+        <div class="grid-2">
+          <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 48px;">
+            <div style="font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Overall Trust Grade</div>
+            <div style="font-size: 6rem; font-weight: 900; line-height: 1; margin: 16px 0;" class="grad-text" id="trustGrade">B</div>
+            <div class="badge badge-green" style="font-size: 0.9rem; padding: 6px 16px;" id="trustGradeLabel">Fairly Trustworthy</div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom: 24px;">📈 Trust Dimensions Evaluation</h3>
+
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span>Transparency Score</span>
+                <span id="scoreTransparency">75%</span>
+              </div>
+              <div class="progress-bar">
+                <div id="barTransparency" class="progress-fill" style="width: 75%; background: var(--grad-safe);"></div>
+              </div>
+              <p style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);" id="noteTransparency">Clear fee schedule, but pre-payment terms require digging.</p>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span>Fairness Score</span>
+                <span id="scoreTrustFairness">60%</span>
+              </div>
+              <div class="progress-bar">
+                <div id="barTrustFairness" class="progress-fill" style="width: 60%; background: var(--grad-amber);"></div>
+              </div>
+              <p style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);" id="noteTrustFairness">Unilateral rate revision rights place heavy power with lender.</p>
+            </div>
+
+            <div class="progress-wrap">
+              <div class="progress-label">
+                <span>Readability &amp; Complexity</span>
+                <span id="scoreComplexity">45%</span>
+              </div>
+              <div class="progress-bar">
+                <div id="barComplexity" class="progress-fill" style="width: 45%; background: var(--grad-blue);"></div>
+              </div>
+              <p style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);" id="noteComplexity">High legal terminology density; average length document.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+          <h3 class="card-title">🛡️ Trustworthiness Executive Audit Summary</h3>
+          <p style="margin-top: 12px; font-size: 0.95rem; line-height: 1.7;" id="trustSummary">
+            The document is built on standard legal frameworks, but incorporates strong indemnity clauses favoring the lender. If negotiated, prepayment penalty terms and fee structure could improve transparency significantly.
+          </p>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast-container" id="toastBox"></div>
+
+  <!-- Mockup Data Generator in case no analysis has been performed -->
+  <script>
+    const MOCK_ANALYSIS = {
+      "success": true,
+      "cached": false,
+      "doc_id": "demo-doc-123",
+      "filename": "SBI_Home_Loan_Agreement.pdf",
+      "core_info": {
+        "loan_type": "Home Loan",
+        "lender_name": "State Bank of India",
+        "borrower_name": "Rohan Sharma",
+        "loan_amount": "₹50,00,000",
+        "loan_amount_numeric": 5000000,
+        "interest_rate": "8.5% p.a.",
+        "interest_rate_numeric": 8.5,
+        "interest_type": "Floating (linked to MCLR)",
+        "tenure": "20 years",
+        "tenure_months": 240,
+        "emi_amount": "₹43,391",
+        "emi_numeric": 43391,
+        "processing_fee": "₹10,000 (0.2%)",
+        "document_date": "18 May 2026",
+        "summary": "This home loan features a standard principal repayment structure but utilizes a variable MCLR linkage that could increase monthly EMIs in future rate hiking cycles. Pre-payment penalties are noted under specific commercial criteria.",
+        "document_quality": "Clear"
+      },
+      "hidden_traps": [
+        {
+          "id": 1,
+          "title": "Unilateral Floating Rate Revisions",
+          "severity": "Critical",
+          "original_text": "The Lender shall at its sole discretion revise the interest rates payable under MCLR variations without prior notice to the borrower...",
+          "plain_explanation": "The bank can increase your interest rate and monthly EMI anytime the benchmark changes, without even warning you first.",
+          "impact": "If interest rates rise by 1.5%, your monthly EMI could increase by ₹4,800, leading to ₹11.5L extra over the loan tenure.",
+          "advice": "Ask if there is a 'Rate Cap' clause to restrict the maximum upward adjustment per year."
+        },
+        {
+          "id": 2,
+          "title": "Hidden Foreclosure Penalties",
+          "severity": "High",
+          "original_text": "A pre-payment charges penalty of 2% of the outstanding principal amount shall apply to pre-closure made using external funds...",
+          "plain_explanation": "If you try to switch this loan to another bank for a cheaper rate, the bank will fine you 2% of your remaining balance.",
+          "impact": "Foreclosing a ₹40L balance will trigger an instant ₹80,000 penalty fee.",
+          "advice": "Negotiate a waiver for pre-payments made after 3 or 5 years."
+        },
+        {
+          "id": 3,
+          "title": "Late Payment Compound Penalty",
+          "severity": "Medium",
+          "original_text": "Default in payments triggers additional penal interest at the rate of 2% per month compounded on outstanding arrears...",
+          "plain_explanation": "If you miss an EMI, they charge an extra 2% penalty every single month on the missed money, compounding over time.",
+          "impact": "Missing two EMIs adds ₹5,200 in pure penalties and will hurt your credit score.",
+          "advice": "Set up auto-debit and check for a grace period clause (usually 3-5 days)."
+        }
+      ],
+      "friendly_explanations": [
+        {
+          "category": "Interest",
+          "emoji": "📈",
+          "legal_text": "Lender reserves the right to vary the margin over MCLR from time to time.",
+          "friendly_text": "The bank can decide to raise the extra premium they charge above their basic interest rate whenever they want."
+        },
+        {
+          "category": "Penalty",
+          "emoji": "💸",
+          "legal_text": "Penal interest shall be payable at 24% per annum on delayed payments.",
+          "friendly_text": "If you're late, you will face a very high 24% annual penalty charge on the missed payment until you pay it off."
+        },
+        {
+          "category": "Rights",
+          "emoji": "🏦",
+          "legal_text": "The borrower agrees to keep the asset fully insured with the lender as sole beneficiary.",
+          "friendly_text": "You must pay for home insurance, and if the house is damaged, the insurance money goes directly to the bank, not to you."
+        },
+        {
+          "category": "Repayment",
+          "emoji": "🔄",
+          "legal_text": "Prepayment is subject to minimum tranches of three months EMI equivalents.",
+          "friendly_text": "You can't just make small extra payments when you have extra cash; any extra prepayment must be at least 3 EMIs large."
+        }
+      ],
+      "risk_score": {
+        "overall_score": 60,
+        "overall_level": "Medium Risk",
+        "overall_color": "amber",
+        "sub_scores": {
+          "penalty_risk": 80,
+          "interest_stability": 40,
+          "transparency": 75,
+          "fairness": 70,
+          "legal_complexity": 50
+        },
+        "verdict": "Medium overall risk due to variable floating rate structures and strict refinancing pre-payment penalties.",
+        "top_risk_factor": "Unilateral MCLR Interest Rate Floating Revisions"
+      },
+      "suspicious_clauses": {
+        "overall_suspicion": "Minor Concerns",
+        "suspicious_items": [
+          {
+            "id": 1,
+            "flag": "High Administrative Charge",
+            "confidence": 90,
+            "reason": "An admin handling fee of ₹15,000 in addition to standard processing fees is unusually high for standard consumer loans.",
+            "original_text": "A processing fee plus an additional flat administrative levy of INR 15,000 is chargeable at disbursement...",
+            "industry_standard": "Processing fees typically cover all administrative costs. Admin levies are usually waived or very low (< ₹2,500).",
+            "severity": "High Concern"
+          },
+          {
+            "id": 2,
+            "flag": "Vague Legal Indemnity",
+            "confidence": 75,
+            "reason": "The clause forces borrower to pay bank's attorney fees for *any* dispute, even if bank is at fault.",
+            "original_text": "Borrower covenants to pay all legal costs, disbursements and attorney charges incurred by lender in respect of any inquiries...",
+            "industry_standard": "Typically legal costs are awarded to the winning party by a court, rather than auto-charged.",
+            "severity": "Unusual"
+          }
+        ]
+      },
+      "trust_score": {
+        "trust_grade": "B",
+        "trust_grade_label": "Fairly Trustworthy",
+        "transparency_score": 75,
+        "transparency_note": "A clear fee table is attached, but late fee penalties are hidden deep within sections.",
+        "fairness_score": 70,
+        "fairness_note": "Includes standard regulatory grievance options but places heavy collateral demands.",
+        "complexity_score": 50,
+        "complexity_note": "Standard legalese level; requires medium financial literacy.",
+        "trust_summary": "Overall standard agreement but includes slightly high administrative charges and float margin revision leverage for the lender."
+      },
+      "reality_cost": {
+        "principal": 5000000,
+        "emi_amount": 43391,
+        "total_payment": 10413840,
+        "total_interest": 5413840,
+        "interest_percentage": 108.3,
+        "shock_statement": "You will pay ₹54,13,840 extra in interest alone — 108% more than you borrowed!",
+        "yearly_breakdown": [
+          { "year": 1, "emi_paid": 520692, "interest_paid": 420542, "principal_paid": 100150, "remaining_balance": 4899850 },
+          { "year": 2, "emi_paid": 520692, "interest_paid": 411624, "principal_paid": 109068, "remaining_balance": 4790782 },
+          { "year": 3, "emi_paid": 520692, "interest_paid": 401925, "principal_paid": 118767, "remaining_balance": 4672015 },
+          { "year": 4, "emi_paid": 520692, "interest_paid": 391375, "principal_paid": 129317, "remaining_balance": 4542698 },
+          { "year": 5, "emi_paid": 520692, "interest_paid": 379901, "principal_paid": 140791, "remaining_balance": 4401907 },
+          { "year": 10, "emi_paid": 2603460, "interest_paid": 1587210, "principal_paid": 1016250, "remaining_balance": 3385657 },
+          { "year": 15, "emi_paid": 2603460, "interest_paid": 948120, "principal_paid": 1655340, "remaining_balance": 1730317 },
+          { "year": 20, "emi_paid": 2603460, "interest_paid": 260420, "principal_paid": 1730317, "remaining_balance": 0 }
+        ]
+      }
+    };
+
+    // User profile indicator binding
+    const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
+    if(user) {
+      document.getElementById('navCtaArea').innerHTML = `
+        <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+        <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+      `;
+    }
+
+    function logout() {
+      localStorage.removeItem('ll_user');
+      window.location.href = 'index.html';
+    }
+
+    // Load active analysis or fallback to mock
+    let activeAnalysis = null;
+    try {
+      const stored = localStorage.getItem('ll_analysis');
+      if (stored) {
+        activeAnalysis = JSON.parse(stored);
+        if (activeAnalysis.success && activeAnalysis.core_info) {
+          console.log("Loaded custom uploaded analysis!");
+        } else {
+          activeAnalysis = MOCK_ANALYSIS;
+          document.getElementById('demoBanner').style.display = 'flex';
+        }
+      } else {
+        activeAnalysis = MOCK_ANALYSIS;
+        document.getElementById('demoBanner').style.display = 'flex';
+      }
+    } catch(e) {
+      activeAnalysis = MOCK_ANALYSIS;
+      document.getElementById('demoBanner').style.display = 'flex';
+    }
+
+    // Set doc id globally for simulator/chat references
+    localStorage.setItem('ll_active_doc_id', activeAnalysis.doc_id);
+
+    // Populate Page Elements
+    document.getElementById('docTypeBadge').textContent = activeAnalysis.core_info.loan_type;
+    document.getElementById('docTitle').textContent = activeAnalysis.filename + " Analysis";
+    document.getElementById('docLender').textContent = "Lender: " + activeAnalysis.core_info.lender_name;
+    document.getElementById('docDate').textContent = activeAnalysis.core_info.document_date || "Today";
+    document.getElementById('summaryText').textContent = activeAnalysis.core_info.summary;
+
+    // Extracted Key Metrics
+    document.getElementById('metricAmount').textContent = activeAnalysis.core_info.loan_amount;
+    document.getElementById('metricRate').textContent = activeAnalysis.core_info.interest_rate;
+    document.getElementById('metricRateType').textContent = activeAnalysis.core_info.interest_type;
+    document.getElementById('metricEMI').textContent = activeAnalysis.core_info.emi_amount;
+    document.getElementById('metricTenure').textContent = activeAnalysis.core_info.tenure;
+    document.getElementById('metricTenureMonths').textContent = activeAnalysis.core_info.tenure_months + " Months";
+
+    // Risk Meter & Scores
+    const scoreVal = activeAnalysis.risk_score.overall_score;
+    document.getElementById('riskScore').textContent = scoreVal;
+    document.getElementById('riskLevel').textContent = activeAnalysis.risk_score.overall_level;
+    
+    // Circular SVG Dasharray calculations (circumference = 251.2)
+    const strokeOffset = 251.2 - (251.2 * scoreVal / 100);
+    const meterCirc = document.getElementById('riskMeterCircle');
+    meterCirc.setAttribute('stroke-dashoffset', strokeOffset);
+    
+    let colorClass = 'var(--amber)';
+    if(activeAnalysis.risk_score.overall_color === 'red') colorClass = 'var(--red)';
+    else if(activeAnalysis.risk_score.overall_color === 'green') colorClass = 'var(--green)';
+    else if(activeAnalysis.risk_score.overall_color === 'orange') colorClass = 'var(--orange)';
+    meterCirc.setAttribute('stroke', colorClass);
+
+    // Sub-scores
+    document.getElementById('scorePenalty').textContent = activeAnalysis.risk_score.sub_scores.penalty_risk + "%";
+    document.getElementById('barPenalty').style.width = activeAnalysis.risk_score.sub_scores.penalty_risk + "%";
+    
+    document.getElementById('scoreInterest').textContent = activeAnalysis.risk_score.sub_scores.interest_stability + "%";
+    document.getElementById('barInterest').style.width = activeAnalysis.risk_score.sub_scores.interest_stability + "%";
+    
+    document.getElementById('scoreFairness').textContent = activeAnalysis.risk_score.sub_scores.fairness + "%";
+    document.getElementById('barFairness').style.width = activeAnalysis.risk_score.sub_scores.fairness + "%";
+
+    // Traps Populate
+    const trapsCont = document.getElementById('trapsContainer');
+    trapsCont.innerHTML = '';
+    activeAnalysis.hidden_traps.forEach(trap => {
+      const el = document.createElement('div');
+      el.className = `trap-card severity-${trap.severity.toLowerCase()}`;
+      el.innerHTML = `
+        <div class="trap-title">
+          <span class="badge ${trap.severity === 'Critical' ? 'badge-red' : trap.severity === 'High' ? 'badge-orange' : 'badge-amber'}">${trap.severity}</span>
+          ${trap.title}
+        </div>
+        <div class="trap-legal">${trap.original_text}</div>
+        <div class="trap-plain">💡 ${trap.plain_explanation}</div>
+        <div class="trap-impact">🚨 Financial Impact: ${trap.impact}</div>
+        <div class="trap-advice">🛡️ Negotiate Move: ${trap.advice}</div>
+      `;
+      trapsCont.appendChild(el);
+    });
+
+    // Reality Cost Populate
+    document.getElementById('shockStatement').textContent = activeAnalysis.reality_cost.shock_statement;
+    document.getElementById('costPrincipal').textContent = "₹" + activeAnalysis.reality_cost.principal.toLocaleString('en-IN');
+    document.getElementById('costTotalPayment').textContent = "₹" + activeAnalysis.reality_cost.total_payment.toLocaleString('en-IN');
+    document.getElementById('costInterest').textContent = "₹" + activeAnalysis.reality_cost.total_interest.toLocaleString('en-IN');
+    document.getElementById('costPercentage').textContent = activeAnalysis.reality_cost.interest_percentage + "%";
+
+    const tableBody = document.querySelector('#amortizationTable tbody');
+    tableBody.innerHTML = '';
+    activeAnalysis.reality_cost.yearly_breakdown.forEach(row => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>Year ${row.year}</td>
+        <td>₹${row.emi_paid.toLocaleString('en-IN')}</td>
+        <td style="color:var(--red);">₹${row.interest_paid.toLocaleString('en-IN')}</td>
+        <td style="color:var(--green);">₹${row.principal_paid.toLocaleString('en-IN')}</td>
+        <td>₹${row.remaining_balance.toLocaleString('en-IN')}</td>
+      `;
+      tableBody.appendChild(tr);
+    });
+
+    // Explain Like a Friend Mode
+    const explainCont = document.getElementById('explanationsContainer');
+    explainCont.innerHTML = '';
+    activeAnalysis.friendly_explanations.forEach(exp => {
+      const el = document.createElement('div');
+      el.className = 'explain-card';
+      el.innerHTML = `
+        <div class="explain-header">
+          <span>${exp.emoji} CATEGORY: ${exp.category.toUpperCase()}</span>
+        </div>
+        <div class="explain-body">
+          <div class="explain-pane legal">
+            <span style="font-weight:700; display:block; margin-bottom:4px; font-size:0.7rem; color:var(--text-muted);">CONTRACTUAL TERMS:</span>
+            "${exp.legal_text}"
+          </div>
+          <div class="explain-pane friendly">
+            ${exp.friendly_text}
+          </div>
+        </div>
+      `;
+      explainCont.appendChild(el);
+    });
+
+    // Suspicious Alerts Detector
+    document.getElementById('overallSuspicion').textContent = activeAnalysis.suspicious_clauses.overall_suspicion;
+    if(activeAnalysis.suspicious_clauses.overall_suspicion.toLowerCase().includes('highly')) {
+      document.getElementById('overallSuspicion').className = 'badge badge-red';
+    } else if(activeAnalysis.suspicious_clauses.overall_suspicion.toLowerCase().includes('minor')) {
+      document.getElementById('overallSuspicion').className = 'badge badge-amber';
+    } else {
+      document.getElementById('overallSuspicion').className = 'badge badge-green';
+    }
+
+    const suspCont = document.getElementById('suspiciousContainer');
+    suspCont.innerHTML = '';
+    activeAnalysis.suspicious_clauses.suspicious_items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'trap-card suspicious-card';
+      el.innerHTML = `
+        <div class="trap-title">
+          <span class="badge badge-red">${item.severity}</span>
+          Confidence: ${item.confidence}% &bull; ${item.flag}
+        </div>
+        <div class="trap-legal">${item.original_text}</div>
+        <div class="trap-plain">🔍 Threat Logic: ${item.reason}</div>
+        <div class="suspicious-standard">⚖️ Industry Standard Benchmark: ${item.industry_standard}</div>
+      `;
+      suspCont.appendChild(el);
+    });
+
+    // Trust Scores Dimensions
+    document.getElementById('trustGrade').textContent = activeAnalysis.trust_score.trust_grade;
+    document.getElementById('trustGradeLabel').textContent = activeAnalysis.trust_score.trust_grade_label;
+    
+    document.getElementById('scoreTransparency').textContent = activeAnalysis.trust_score.transparency_score + "%";
+    document.getElementById('barTransparency').style.width = activeAnalysis.trust_score.transparency_score + "%";
+    document.getElementById('noteTransparency').textContent = activeAnalysis.trust_score.transparency_note;
+
+    document.getElementById('scoreTrustFairness').textContent = activeAnalysis.trust_score.fairness_score + "%";
+    document.getElementById('barTrustFairness').style.width = activeAnalysis.trust_score.fairness_score + "%";
+    document.getElementById('noteTrustFairness').textContent = activeAnalysis.trust_score.fairness_note;
+
+    document.getElementById('scoreComplexity').textContent = activeAnalysis.trust_score.complexity_score + "%";
+    document.getElementById('barComplexity').style.width = activeAnalysis.trust_score.complexity_score + "%";
+    document.getElementById('noteComplexity').textContent = activeAnalysis.trust_score.complexity_note;
+
+    document.getElementById('trustSummary').textContent = activeAnalysis.trust_score.trust_summary;
+
+
+    // ── Tab Switching Logic ─────────────────────────────
+    function switchSection(secId) {
+      // Deactivate all sidebar items
+      document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+      
+      // Activate clicked item
+      const activeBtn = Array.from(document.querySelectorAll('.sidebar-item')).find(item => 
+        item.textContent.toLowerCase().includes(secId.toLowerCase())
+      );
+      if(activeBtn) activeBtn.classList.add('active');
+
+      // Hide all sections
+      document.querySelectorAll('.section-content').forEach(sec => sec.style.display = 'none');
+
+      // Show desired section
+      const activeSec = document.getElementById('section-' + secId);
+      if(activeSec) {
+        activeSec.style.display = 'block';
+      }
+    }
+
+    // Handle initial routing if demo is requested
+    const params = new URLSearchParams(window.location.search);
+    if(params.has('demo')) {
+      document.getElementById('demoBanner').style.display = 'flex';
+    }
+  </script>
+</body>
+</html>

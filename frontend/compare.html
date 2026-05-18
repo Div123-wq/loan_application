@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LoanLens AI — Loan Comparison Battle</title>
+  <script>
+    if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
+      window.location.href = 'auth.html';
+    }
+  </script>
+  <link rel="stylesheet" href="css/global.css">
+  <style>
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 32px;
+    }
+    .loan-battle-card {
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+    .loan-battle-card:hover {
+      border-color: var(--blue-glow);
+    }
+    .loan-battle-card.winner {
+      border: 2px solid var(--blue);
+      box-shadow: var(--shadow-blue);
+    }
+    .loan-battle-card.winner::after {
+      content: "👑 AI RECOMMENDED";
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      background: var(--grad-blue);
+      color: white;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+    }
+    .vs-divider {
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+      font-weight: 900;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      margin: 16px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .vs-divider::before, .vs-divider::after {
+      content: "";
+      height: 1px;
+      flex-grow: 1;
+      background: var(--border);
+    }
+    .battle-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .battle-table th, .battle-table td {
+      padding: 14px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .battle-table th {
+      background: var(--bg-secondary);
+      font-weight: 700;
+      color: var(--text-secondary);
+      width: 25%;
+    }
+    .battle-table td.highlight {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .battle-table tr:hover td {
+      background: rgba(255,255,255,0.01);
+    }
+    .upload-box-small {
+      border: 2px dashed var(--border-accent);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      background: rgba(0,0,0,0.15);
+      transition: all 0.2s;
+    }
+    .upload-box-small:hover {
+      border-color: var(--blue);
+      background: var(--blue-glow);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="simulator.html">Simulator</a>
+      <a href="compare.html" class="active">Compare</a>
+      <a href="chat.html">AI Chat</a>
+    </div>
+    <div id="navCtaArea">
+      <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
+    </div>
+  </nav>
+
+  <div class="page-wrapper">
+    <aside class="sidebar">
+      <div class="sidebar-label">Document Intelligence</div>
+      <button class="sidebar-item" onclick="window.location.href='dashboard.html'">
+        <span class="icon">📊</span> Return Dashboard
+      </button>
+
+      <div class="sidebar-label">Comparison Battle</div>
+      <button class="sidebar-item active">
+        <span class="icon">⚔️</span> Loan Battle
+      </button>
+    </aside>
+
+    <main class="main-content">
+      <div class="section-header">
+        <div>
+          <h2 class="grad-text">⚔️ Loan Comparison Battle</h2>
+          <p style="font-size: 0.9rem; margin-top: 4px;">Upload multiple loan offers and let AI dissect cost, safety, and clauses side-by-side.</p>
+        </div>
+      </div>
+
+      <!-- Battle Selectors / Uploaders -->
+      <div class="grid-3" style="margin-bottom: 24px;">
+        <div class="card" id="slot-1">
+          <h4 style="margin-bottom: 8px;">Document 1 (Primary)</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="slot-1-filename">SBI_Home_Loan_Agreement.pdf</p>
+          <div class="badge badge-green">Loaded</div>
+        </div>
+
+        <div class="card" id="slot-2">
+          <h4 style="margin-bottom: 8px;">Document 2</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="slot-2-filename">No file selected</p>
+          <div class="upload-box-small" id="upload-2" onclick="triggerUpload(2)">
+            <span style="font-size: 1.2rem;">➕</span>
+            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Upload Loan 2</div>
+          </div>
+          <input type="file" id="file-2" style="display:none;" onchange="handleComparisonUpload(2)">
+        </div>
+
+        <div class="card" id="slot-3">
+          <h4 style="margin-bottom: 8px;">Document 3</h4>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="slot-3-filename">No file selected</p>
+          <div class="upload-box-small" id="upload-3" onclick="triggerUpload(3)">
+            <span style="font-size: 1.2rem;">➕</span>
+            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Upload Loan 3</div>
+          </div>
+          <input type="file" id="file-3" style="display:none;" onchange="handleComparisonUpload(3)">
+        </div>
+      </div>
+
+      <div style="margin-bottom: 32px; text-align: center;" id="battleTriggerWrap">
+        <button class="btn btn-primary" onclick="initiateBattle()" id="battleBtn" style="padding: 14px 48px; font-size: 1rem;">⚔️ Initiate AI Battle ⚔️</button>
+      </div>
+
+      <div id="battleOutput" style="display: none;">
+        <div class="vs-divider">LOAN BATTLE DECISION</div>
+
+        <!-- AI Recommendation Verdict Cards -->
+        <div class="comparison-grid" id="verdictGrid">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Comparative Specs Table -->
+        <div class="card" style="margin-bottom: 32px;">
+          <h3 class="card-title">⚖️ Side-by-Side Specifications Table</h3>
+          <table class="battle-table" id="battleTable">
+            <thead>
+              <tr id="tableHeaderRow">
+                <th>Metric Category</th>
+                <!-- Loan names populated dynamically -->
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <!-- Spec entries dynamically loaded -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Negotiation Strategies -->
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="card-title" style="color: var(--green); margin-bottom: 16px;">🛡️ AI Negotiation Leverage Strategies</h3>
+            <ul id="negStrategies" style="font-size: 0.88rem; color: var(--text-secondary); padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+              <li>Ask Lender 1 to match the processing fees offered by Lender 2 to save up to ₹7,500.</li>
+              <li>Ask Lender 2 if their unilateral margin revision clause can be capped at 1% annually.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="color: var(--amber); margin-bottom: 16px;">🔍 Strategic Risk Divergences</h3>
+            <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.6;" id="riskDivergences">
+              Lender 1 relies on floating rate structures which are vulnerable to macroeconomic policy revisions, but enforces lighter prepayment penalties. Lender 2 offers fixed terms but implements aggressive 2% exit foreclosure fees.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Demo Battle Mock (Shown immediately in demo mode) -->
+      <div id="demoBattleNotice" class="card" style="margin-top: 32px; background: rgba(79, 142, 247, 0.05); text-align: center; border: 1px dashed var(--blue);">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">💡</div>
+        <h3>Comparison Demo Active</h3>
+        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 6px auto 16px;">
+          We loaded default home loan agreements. Click the 'Initiate AI Battle' button to see how the side-by-side dissection and recommendation ledger works.
+        </p>
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast-container" id="toastBox"></div>
+
+  <script>
+    const API = 'http://localhost:5000';
+    let loadedDocs = [];
+
+    // User profile indicator binding
+    const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
+    if(user) {
+      document.getElementById('navCtaArea').innerHTML = `
+        <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+        <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+      `;
+    }
+
+    function logout() {
+      localStorage.removeItem('ll_user');
+      window.location.href = 'index.html';
+    }
+    
+    // Initialise slots based on active document from dashboard
+    let activeDocId = localStorage.getItem('ll_active_doc_id') || "";
+    let activeFilename = localStorage.getItem('ll_filename') || "SBI_Home_Loan_Agreement.pdf";
+    
+    if(activeDocId) {
+      loadedDocs.push(activeDocId);
+      window.addEventListener('DOMContentLoaded', () => {
+        const filenameEl = document.getElementById('slot-1-filename');
+        if (filenameEl) {
+          filenameEl.textContent = activeFilename;
+        }
+      });
+    }
+
+    function triggerUpload(slotNum) {
+      document.getElementById('file-' + slotNum).click();
+    }
+
+    async function handleComparisonUpload(slotNum) {
+      const fileEl = document.getElementById('file-' + slotNum);
+      if(!fileEl.files.length) return;
+      
+      const file = fileEl.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      toast(`⏳ Uploading file ${file.name}...`, 'info');
+      
+      try {
+        const res = await fetch(`${API}/api/upload`, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Upload failed");
+        
+        // Save doc reference
+        loadedDocs.push(data.doc_id);
+        
+        // Update slot styling
+        const filenameLabel = document.getElementById(`slot-${slotNum}-filename`);
+        filenameLabel.textContent = file.name;
+        
+        const uploadBox = document.getElementById(`upload-${slotNum}`);
+        uploadBox.style.display = 'none';
+        
+        const badge = document.createElement('div');
+        badge.className = 'badge badge-green';
+        badge.textContent = 'Loaded';
+        document.getElementById(`slot-${slotNum}`).appendChild(badge);
+        
+        toast(`✅ File ${file.name} uploaded successfully!`, 'success');
+      } catch(e) {
+        toast(`❌ ${e.message}`, 'error');
+      }
+    }
+
+    // Initiate Battle Logic
+    async function initiateBattle() {
+      // For demo fallback (if only 1 document is uploaded, we inject mock comparison data)
+      if(loadedDocs.length < 2) {
+        toast("Fallback to Comparison Demo Data active!", "info");
+        renderMockBattle();
+        return;
+      }
+
+      const btn = document.getElementById('battleBtn');
+      btn.textContent = "⏳ Simulating Battle Dissections...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(`${API}/api/compare`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doc_ids: loadedDocs })
+        });
+        const data = await res.json();
+        if(!res.ok) throw new Error(data.error || "Comparison Battle failed");
+
+        renderBattleResults(data);
+        toast("✅ Loan Comparison Battle completed!", "success");
+
+      } catch(e) {
+        toast(`❌ ${e.message}`, 'error');
+      } finally {
+        btn.textContent = "⚔️ Initiate AI Battle ⚔️";
+        btn.disabled = false;
+      }
+    }
+
+    function renderBattleResults(data) {
+      document.getElementById('demoBattleNotice').style.display = 'none';
+      document.getElementById('battleOutput').style.display = 'block';
+
+      // 1. Verdict Cards
+      const verdictGrid = document.getElementById('verdictGrid');
+      verdictGrid.innerHTML = '';
+      
+      const winners = [
+        { type: "Cheapest Loan", desc: data.comparison.winner_cheapest.reason, icon: "💰" },
+        { type: "Safest Option", desc: data.comparison.winner_safest.reason, icon: "🛡️" },
+        { type: "Best Recommendation", desc: data.comparison.winner_overall.reason, icon: "👑", active: true }
+      ];
+
+      winners.forEach(w => {
+        const card = document.createElement('div');
+        card.className = `loan-battle-card ${w.active ? 'winner' : ''}`;
+        card.innerHTML = `
+          <div style="font-size: 2rem; margin-bottom: 8px;">${w.icon}</div>
+          <h3 class="card-title" style="margin-bottom: 8px;">${w.type}</h3>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">${w.desc}</p>
+        `;
+        verdictGrid.appendChild(card);
+      });
+
+      // 2. Specifications Table Header
+      const headerRow = document.getElementById('tableHeaderRow');
+      headerRow.innerHTML = '<th>Specification Category</th>';
+      data.loans.forEach(loan => {
+        headerRow.innerHTML += `<th>${loan.filename} (${loan.lender})</th>`;
+      });
+
+      // 3. Specifications Table Rows
+      const rows = [
+        { label: "Loan Type", key: "loan_type" },
+        { label: "Principal Amount", key: "amount" },
+        { label: "Interest Rate", key: "rate" },
+        { label: "Interest Structure", key: "interest_type" },
+        { label: "Estimated EMI", key: "emi" },
+        { label: "True Total Payout", key: "total_payment", highlighted: true },
+        { label: "Risk Score Level", key: "risk_level" },
+        { label: "Hidden Traps Count", key: "trap_count", highlighted: true }
+      ];
+
+      const body = document.getElementById('tableBody');
+      body.innerHTML = '';
+      rows.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<th>${r.label}</th>`;
+        data.loans.forEach(loan => {
+          const val = loan[r.key];
+          tr.innerHTML += `<td class="${r.highlighted ? 'highlight' : ''}">${val}</td>`;
+        });
+        body.appendChild(tr);
+      });
+
+      // 4. Negotiation tips
+      const tipsList = document.getElementById('negStrategies');
+      tipsList.innerHTML = '';
+      data.comparison.negotiation_tips.forEach(tip => {
+        const li = document.createElement('li');
+        li.textContent = tip;
+        tipsList.appendChild(li);
+      });
+
+      // 5. Divergence summary
+      document.getElementById('riskDivergences').textContent = data.comparison.final_verdict;
+    }
+
+    function renderMockBattle() {
+      // Local mock data simulation
+      const mockData = {
+        loans: [
+          { filename: "Agreement_SBI.pdf", lender: "SBI", loan_type: "Home Loan", amount: "₹50,00,000", rate: "8.5%", interest_type: "Floating (MCLR)", emi: "₹43,391", total_payment: "₹1,04,13,840", risk_level: "Medium Risk (60)", trap_count: 3 },
+          { filename: "Offer_HDFC.pdf", lender: "HDFC", loan_type: "Home Loan", amount: "₹50,00,000", rate: "8.25%", interest_type: "Fixed for 3 years", emi: "₹42,603", total_payment: "₹1,02,24,720", risk_level: "High Risk (75)", trap_count: 5 }
+        ],
+        comparison: {
+          winner_cheapest: { reason: "Agreement_SBI.pdf offers lower processing administrative charges, making upfront disbursal ₹12,000 cheaper." },
+          winner_safest: { reason: "Offer_HDFC.pdf implements a fixed interest buffer for Year 1-3 shielding borrower from volatile rate revisions." },
+          winner_overall: { reason: "Agreement_SBI.pdf offers a better balance between low exit prepayment penalties and overall long-term stability." },
+          negotiation_tips: [
+            "Request SBI to match HDFC's 8.25% starting interest rates for the initial year.",
+            "Ask HDFC to completely remove the 2% foreclosure administrative exit fees after Year 3."
+          ],
+          final_verdict: "While HDFC is slightly cheaper initially, their high prepayment penalty of 2% is a hidden trap if you plan to refinance. SBI stands out as the overall safer long-term choice."
+        }
+      };
+
+      renderBattleResults(mockData);
+    }
+
+    // Toast Alert
+    function toast(msg, type='info') {
+      const c = document.getElementById('toastBox');
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+  </script>
+</body>
+</html>
