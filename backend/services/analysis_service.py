@@ -54,7 +54,7 @@ You must return a single JSON object containing exactly this structure, with no 
     "emi_numeric": 43391,
     "processing_fee": "string (processing charges, e.g. ₹10,000)",
     "document_date": "string (e.g. 18 May 2026)",
-    "summary": "3-4 sentence expert plain-English summary of this loan document structure, highlighting key structural caveats.",
+    "summary": "10-12 line expert plain-English summary of this loan document structure, highlighting key structural caveats.",
     "document_quality": "Clear / Partially Clear / Unclear"
   }},
   "hidden_traps": [

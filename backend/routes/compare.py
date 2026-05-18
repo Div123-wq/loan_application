@@ -1,7 +1,7 @@
 import json
 from flask import Blueprint, request, jsonify
 from routes.upload import get_document_text, document_store
-from services.analysis_service import analyze_document_core, calculate_risk_score, detect_hidden_traps
+from services.analysis_service import perform_master_analysis
 from services.github_ai_service import chat_json
 
 compare_bp = Blueprint('compare', __name__)
@@ -26,12 +26,23 @@ def compare_loans():
     for i, doc_id in enumerate(doc_ids):
         try:
             text = get_document_text(doc_id)
-            core = analyze_document_core(text)
-            traps = detect_hidden_traps(text)
-            risk = calculate_risk_score(text, traps)
-            reality_cost_principal = core.get("loan_amount_numeric", 500000)
-            reality_cost_rate = core.get("interest_rate_numeric", 12.0)
-            reality_cost_months = core.get("tenure_months", 60)
+            master_data = perform_master_analysis(text)
+            core = master_data.get("core_info", {})
+            traps = master_data.get("hidden_traps", [])
+            risk = master_data.get("risk_score", {})
+            reality_cost_principal = core.get("loan_amount_numeric")
+            reality_cost_rate = core.get("interest_rate_numeric")
+            reality_cost_months = core.get("tenure_months")
+            
+            try:
+                reality_cost_principal = float(reality_cost_principal) if reality_cost_principal is not None else 500000
+                reality_cost_rate = float(reality_cost_rate) if reality_cost_rate is not None else 12.0
+                reality_cost_months = int(reality_cost_months) if reality_cost_months is not None else 60
+            except (TypeError, ValueError):
+                reality_cost_principal = 500000
+                reality_cost_rate = 12.0
+                reality_cost_months = 60
+                
             monthly_rate = reality_cost_rate / 12 / 100
             emi = 0
             if monthly_rate > 0:

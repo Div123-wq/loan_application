@@ -54,13 +54,24 @@ def chat_json(system_prompt: str, user_prompt: str, temperature: float = 0.2) ->
         response = client.chat.completions.create(
             model=model,
             temperature=temperature,
-            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt + "\n\nRespond ONLY with valid JSON."},
                 {"role": "user", "content": user_prompt},
             ],
         )
-        return response.choices[0].message.content.strip()
+        content = response.choices[0].message.content.strip()
+        
+        # Strip Markdown blocks if they exist
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+            
+        # Fallback to finding the first { and last } if it's still messy
+        if content.find('{') != -1 and content.rfind('}') != -1:
+            content = content[content.find('{'):content.rfind('}')+1]
+            
+        return content.strip()
     except Exception as e:
         print(f"Error calling GitHub AI Service JSON (falling back to mock): {e}")
         return get_mock_json_response(user_prompt)
