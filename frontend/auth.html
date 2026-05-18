@@ -95,6 +95,7 @@
 
   <!-- Minimal Brand Header -->
   <nav class="navbar" style="position: absolute; top: 0; left: 0; right: 0; background: transparent; border-bottom: none;">
+    <div style="display:flex; align-items:center; gap:20px; margin-left:auto;"><div id="google_translate_element"></div></div>
     <div class="nav-brand" onclick="window.location.href='index.html'" style="cursor: pointer;">
       <div class="logo-icon">🔍</div>LoanLens AI
     </div>
@@ -290,5 +291,18 @@
       setTimeout(() => t.remove(), 3500);
     }
   </script>
+
+<!-- Google Translate Script -->
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',
+    includedLanguages: 'en,hi,kn,ta,te,ml,mr',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

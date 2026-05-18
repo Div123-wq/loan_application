@@ -187,10 +187,13 @@
       <a href="compare.html">Compare</a>
       <a href="chat.html">AI Chat</a>
     </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+    <div id="google_translate_element"></div>
     <div id="navCtaArea">
       <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
     </div>
-  </nav>
+    </div>
+</nav>
 
   <div class="page-wrapper">
     <!-- Sidebar -->
@@ -288,16 +291,20 @@
           <!-- Risk Meter -->
           <div class="card risk-meter-card">
             <h3 class="card-title" style="margin-bottom: 20px;">🛡️ Overall Risk Meter</h3>
-            <div class="risk-meter-wrap">
-              <svg class="risk-meter-svg" viewBox="0 0 100 100">
-                <!-- Background track -->
-                <circle cx="50" cy="50" r="40" fill="transparent" stroke="var(--border)" stroke-width="8" stroke-dasharray="251.2" />
+            <div class="risk-meter-wrap" style="height: 160px; width: 260px; position: relative;">
+              <svg class="risk-meter-svg" viewBox="0 0 200 130" style="width: 100%; height: 100%; overflow: visible;">
+                <!-- Background Arc -->
+                <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="var(--border)" stroke-width="16" stroke-linecap="round" />
                 <!-- Active color segment -->
-                <circle id="riskMeterCircle" cx="50" cy="50" r="40" fill="transparent" stroke="var(--amber)" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="100" stroke-linecap="round" style="transform: rotate(-90deg); transform-origin: 50% 50%;" />
+                <path id="riskMeterCircle" d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="var(--amber)" stroke-width="16" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="251.3" style="transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s ease;" />
+                
+                <!-- Ticks / Labels -->
+                <text x="20" y="135" fill="var(--green)" font-family="Inter" font-size="12" font-weight="800" text-anchor="middle">SAFE (0)</text>
+                <text x="180" y="135" fill="var(--red)" font-family="Inter" font-size="12" font-weight="800" text-anchor="middle">HIGH (100)</text>
               </svg>
-              <div class="risk-label">
-                <div class="risk-score-text" id="riskScore">60</div>
-                <div class="risk-level-text" id="riskLevel">Medium Risk</div>
+              <div class="risk-label" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); text-align: center;">
+                <div class="risk-score-text" id="riskScore" style="font-size: 3rem; line-height: 1; transition: color 0.5s ease;">60</div>
+                <div class="risk-level-text" id="riskLevel" style="font-size: 0.95rem; margin-top: 6px; color: var(--text-primary); letter-spacing: 0.08em; text-transform: uppercase;">Medium Risk</div>
               </div>
             </div>
 
@@ -690,16 +697,22 @@
     document.getElementById('riskScore').textContent = scoreVal;
     document.getElementById('riskLevel').textContent = activeAnalysis.risk_score.overall_level;
     
-    // Circular SVG Dasharray calculations (circumference = 251.2)
-    const strokeOffset = 251.2 - (251.2 * scoreVal / 100);
+    // Circular SVG Dasharray calculations (circumference = 251.3)
+    const strokeOffset = 251.3 - (251.3 * scoreVal / 100);
     const meterCirc = document.getElementById('riskMeterCircle');
-    meterCirc.setAttribute('stroke-dashoffset', strokeOffset);
+    // Ensure browser reflow before setting offset for animation to trigger
+    setTimeout(() => {
+      meterCirc.setAttribute('stroke-dashoffset', strokeOffset);
+    }, 100);
     
     let colorClass = 'var(--amber)';
     if(activeAnalysis.risk_score.overall_color === 'red') colorClass = 'var(--red)';
     else if(activeAnalysis.risk_score.overall_color === 'green') colorClass = 'var(--green)';
     else if(activeAnalysis.risk_score.overall_color === 'orange') colorClass = 'var(--orange)';
+    
     meterCirc.setAttribute('stroke', colorClass);
+    document.getElementById('riskScore').style.color = colorClass;
+    document.getElementById('riskScore').style.webkitTextFillColor = colorClass;
 
     // Sub-scores
     document.getElementById('scorePenalty').textContent = activeAnalysis.risk_score.sub_scores.penalty_risk + "%";
@@ -847,5 +860,18 @@
       document.getElementById('demoBanner').style.display = 'flex';
     }
   </script>
+
+<!-- Google Translate Script -->
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',
+    includedLanguages: 'en,hi,kn,ta,te,ml,mr',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

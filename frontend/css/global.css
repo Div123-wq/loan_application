@@ -422,3 +422,41 @@ p  { color: var(--text-secondary); }
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── Google Translate Custom Styling ─────────────────────── */
+#google_translate_element {
+  display: flex;
+  align-items: center;
+}
+
+.goog-te-gadget {
+  font-family: 'Inter', sans-serif !important;
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.goog-te-gadget .goog-te-combo {
+  font-family: 'Inter', sans-serif !important;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+}
+
+.goog-te-gadget .goog-te-combo:hover, .goog-te-gadget .goog-te-combo:focus {
+  border-color: var(--blue);
+  background: var(--bg-card);
+}
+
+/* Hide the annoying Google Translate banner */
+body { top: 0 !important; }
+.skiptranslate iframe { display: none !important; }
+#goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+.goog-text-highlight { background: none !important; box-shadow: none !important; }

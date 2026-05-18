@@ -117,10 +117,13 @@
       <a href="compare.html" class="active">Compare</a>
       <a href="chat.html">AI Chat</a>
     </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+    <div id="google_translate_element"></div>
     <div id="navCtaArea">
       <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
     </div>
-  </nav>
+    </div>
+</nav>
 
   <div class="page-wrapper">
     <aside class="sidebar">
@@ -441,5 +444,18 @@
       setTimeout(() => t.remove(), 3500);
     }
   </script>
+
+<!-- Google Translate Script -->
+<script type="text/javascript">
+function googleTranslateElementInit() {
+  new google.translate.TranslateElement({
+    pageLanguage: 'en',
+    includedLanguages: 'en,hi,kn,ta,te,ml,mr',
+    layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+    autoDisplay: false
+  }, 'google_translate_element');
+}
+</script>
+<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
