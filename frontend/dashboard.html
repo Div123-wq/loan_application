@@ -402,10 +402,15 @@
 
       <!-- 2. HIDDEN TRAPS SECTION -->
       <div id="section-traps" class="section-content animate-fade-in" style="display:none;">
-        <div class="section-header" style="margin-bottom: 16px;">
+        <div class="section-header" style="margin-bottom: 16px; align-items: flex-start;">
           <div>
             <h3 class="card-title">⚠️ Hidden Trap Detector</h3>
             <p style="font-size: 0.9rem; margin-top: 4px;">AI-identified clauses borrower should negotiate or carefully consider.</p>
+          </div>
+          <div style="text-align: right; min-width: 180px;">
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnTraps">
+              <span>📥</span> Download PDF Report
+            </button>
           </div>
         </div>
         <div id="trapsContainer">
@@ -415,6 +420,17 @@
 
       <!-- 3. REALITY COST SECTION -->
       <div id="section-costs" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 20px; align-items: flex-start;">
+          <div>
+            <h3 class="card-title">📊 True Financial Costs</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">A transparent breakdown of your lifetime payments, interest rates, and amortization impact.</p>
+          </div>
+          <div style="text-align: right; min-width: 180px;">
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnCosts">
+              <span>📥</span> Download PDF Report
+            </button>
+          </div>
+        </div>
         <div class="shock-card">
           <div class="shock-icon">🚨</div>
           <div class="shock-text">
@@ -465,10 +481,15 @@
 
       <!-- 4. EXPLAIN MODE SECTION -->
       <div id="section-explain" class="section-content animate-fade-in" style="display:none;">
-        <div class="section-header" style="margin-bottom: 20px;">
+        <div class="section-header" style="margin-bottom: 20px; align-items: flex-start;">
           <div>
             <h3 class="card-title">💬 Explain Like a Friend Mode</h3>
             <p style="font-size: 0.9rem; margin-top: 4px;">Translating confusing legalese and banker jargon into plain English explanations.</p>
+          </div>
+          <div style="text-align: right; min-width: 180px;">
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnExplain">
+              <span>📥</span> Download PDF Report
+            </button>
           </div>
         </div>
         <div class="friend-explain-container" id="explanationsContainer">
@@ -478,12 +499,17 @@
 
       <!-- 5. SUSPICIOUS ALERTS SECTION -->
       <div id="section-suspicious" class="section-content animate-fade-in" style="display:none;">
-        <div class="section-header" style="margin-bottom: 16px;">
+        <div class="section-header" style="margin-bottom: 16px; align-items: flex-start;">
           <div>
             <h3 class="card-title">🕵️ AI Fraud &amp; Suspicious Clause Detector</h3>
             <p style="font-size: 0.9rem; margin-top: 4px;">Flags unusually high fees, vague wording, or abnormalities against industry standards.</p>
           </div>
-          <span class="badge badge-red" id="overallSuspicion">Minor Concerns</span>
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <span class="badge badge-red" id="overallSuspicion">Minor Concerns</span>
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnSuspicious">
+              <span>📥</span> Download PDF Report
+            </button>
+          </div>
         </div>
         <div id="suspiciousContainer">
           <!-- Dynamically populated -->
@@ -492,6 +518,17 @@
 
       <!-- 6. TRUST SCORES SECTION -->
       <div id="section-trust" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 20px; align-items: flex-start;">
+          <div>
+            <h3 class="card-title">🛡️ LoanLens Trust Dimensions</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">An evaluation of contract fairness, transparency, and clarity against global consumer standards.</p>
+          </div>
+          <div style="text-align: right; min-width: 180px;">
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnTrust">
+              <span>📥</span> Download PDF Report
+            </button>
+          </div>
+        </div>
         <div class="grid-2">
           <div class="card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 48px;">
             <div style="font-size: 1.2rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Overall Trust Grade</div>
@@ -1177,10 +1214,11 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
 
     // ── High-Fidelity Client-side PDF Exporter ─────────────────────────────
     window.exportHighlightReport = function() {
-      const btnTop = document.getElementById('exportReportBtn');
-      const btnReader = document.getElementById('exportReportBtnReader');
-      if (btnTop) { btnTop.innerHTML = '<span>⏳</span> Compiling...'; btnTop.disabled = true; }
-      if (btnReader) { btnReader.innerHTML = '<span>⏳</span> Compiling...'; btnReader.disabled = true; }
+      const allExportBtns = document.querySelectorAll('[id^="exportReportBtn"]');
+      allExportBtns.forEach(btn => {
+        btn.innerHTML = '<span>⏳</span> Compiling...';
+        btn.disabled = true;
+      });
       
       // Get core info
       const info = activeAnalysis.core_info;
@@ -1524,14 +1562,18 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       
       html2pdf().set(opt).from(printArea).save().then(() => {
         printArea.remove();
-        if (btnTop) { btnTop.innerHTML = '<span>📥</span> Download PDF Report'; btnTop.disabled = false; }
-        if (btnReader) { btnReader.innerHTML = '<span>📥</span> Download PDF Report'; btnReader.disabled = false; }
+        allExportBtns.forEach(btn => {
+          btn.innerHTML = '<span>📥</span> Download PDF Report';
+          btn.disabled = false;
+        });
         toast('🎉 PDF Audit Report downloaded successfully!', 'success');
       }).catch(err => {
         console.error("PDF generation crash: ", err);
         printArea.remove();
-        if (btnTop) { btnTop.innerHTML = '<span>📥</span> Download PDF Report'; btnTop.disabled = false; }
-        if (btnReader) { btnReader.innerHTML = '<span>📥</span> Download PDF Report'; btnReader.disabled = false; }
+        allExportBtns.forEach(btn => {
+          btn.innerHTML = '<span>📥</span> Download PDF Report';
+          btn.disabled = false;
+        });
         toast('❌ PDF generation failed. Try again!', 'error');
       });
     }
