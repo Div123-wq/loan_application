@@ -26,8 +26,25 @@ def perform_master_analysis(document_text: str) -> dict:
     This avoids context isolation, parses up to 100,000 characters of the document text fully,
     and returns perfectly synchronized financial metrics, risk scores, and hidden trap detections.
     """
-    # Clean and slice text to keep it safely within premium token limits
-    safe_text = document_text[:100000]
+    # Compress multiple consecutive spaces and tabs to preserve token space
+    import re
+    cleaned_text = re.sub(r'[ \t]+', ' ', document_text)
+    # Compress multiple consecutive newlines
+    cleaned_text = re.sub(r'\n+', '\n', cleaned_text)
+    
+    # Intelligent dual-end sampling for massive documents (over 120,000 chars)
+    # This keeps core info from the start and exclusions/penalties from the end,
+    # discarding middle boilerplate to prevent API timeouts or payload limits.
+    if len(cleaned_text) <= 120000:
+        safe_text = cleaned_text
+    else:
+        first_part = cleaned_text[:40000]
+        last_part = cleaned_text[-70000:]
+        safe_text = (
+            first_part + 
+            "\n\n--- [LOANLENS SYSTEM: Middle Boilerplate Omitted for Context Optimization] ---\n\n" + 
+            last_part
+        )
     
     prompt = f"""You are LoanLens AI — the premium financial intelligence analyst.
 Analyze the provided document text (which may be a loan agreement, insurance policy, lease, or pet agreement) in its entirety to generate a high-fidelity, synchronized audit.

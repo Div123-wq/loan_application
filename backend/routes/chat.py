@@ -43,8 +43,12 @@ def chat_with_ai():
     doc_context = ""
     if doc_id:
         try:
-            doc_context = get_document_text(doc_id)[:4000]
-        except:
+            raw_context = get_document_text(doc_id)
+            if len(raw_context) > 24000:
+                doc_context = raw_context[:12000] + "\n\n... [Boilerplate omitted for context optimization] ...\n\n" + raw_context[-12000:]
+            else:
+                doc_context = raw_context
+        except Exception:
             pass
 
     # Build conversation history
