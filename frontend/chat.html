@@ -1,9 +1,16 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LoanLens AI — Conversational Intelligence Advisor</title>
+  <title>FinScan AI — Conversational Intelligence Advisor</title>
+  <script>
+    // Theme Flash Prevention
+    (function() {
+      const theme = localStorage.getItem('ll_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <script>
     if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
       window.location.href = 'auth.html';
@@ -101,7 +108,7 @@
 <body>
   <!-- Navbar -->
   <nav class="navbar">
-    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-brand"><div class="logo-icon">🔍</div>FinScan AI</div>
     <div class="nav-links">
       <a href="index.html">Home</a>
       <a href="dashboard.html">Dashboard</a>
@@ -110,6 +117,7 @@
       <a href="chat.html" class="active">AI Chat</a>
     </div>
     <div style="display:flex; align-items:center; gap:16px;">
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌙</button>
     <div id="google_translate_element"></div>
     <div id="navCtaArea">
       <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
@@ -179,7 +187,7 @@
           <!-- Chat messages area -->
           <div class="chat-messages" id="chatMessages">
             <div class="chat-bubble ai animate-fade-in">
-              <p>Hey there! I'm your LoanLens companion. Ask me anything about your uploaded document! For example, you can ask <strong>"Can this loan become dangerous later?"</strong> or <strong>"Explain late payment terms."</strong></p>
+              <p>Hey there! I'm your FinScan companion. Ask me anything about your uploaded document! For example, you can ask <strong>"Can this loan become dangerous later?"</strong> or <strong>"Explain late payment terms."</strong></p>
             </div>
           </div>
 
@@ -463,6 +471,32 @@
       c.appendChild(t);
       setTimeout(() => t.remove(), 3500);
     }
+
+    // Initialize Theme Switcher Icon
+    function initThemeBtn() {
+      const currentTheme = localStorage.getItem('ll_theme') || 'dark';
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) {
+        btn.textContent = currentTheme === 'light' ? '☀️' : '🌙';
+      }
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('ll_theme', newTheme);
+      
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) {
+        btn.textContent = newTheme === 'light' ? '☀️' : '🌙';
+      }
+      
+      window.dispatchEvent(new Event('themeChanged'));
+      toast(`☀️ Theme switched to ${newTheme} mode!`, 'success');
+    }
+
+    initThemeBtn();
   </script>
 
 <!-- Google Translate Script -->
@@ -479,3 +513,4 @@ function googleTranslateElementInit() {
 <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
+

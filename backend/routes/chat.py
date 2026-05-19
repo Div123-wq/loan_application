@@ -1,4 +1,4 @@
-import json
+﻿import json
 from flask import Blueprint, request, jsonify
 from routes.upload import get_document_text
 from services.github_ai_service import chat
@@ -8,7 +8,7 @@ chat_bp = Blueprint('chat', __name__)
 # Per-session conversation history
 chat_histories = {}
 
-CHAT_SYSTEM = """You are LoanLens AI — a friendly, knowledgeable financial advisor specializing in loan documents.
+CHAT_SYSTEM = """You are FinScan AI — a friendly, knowledgeable financial advisor specializing in loan documents.
 You speak like a trusted friend who happens to be a financial expert.
 You have access to the user's loan document and answer questions about it clearly and honestly.
 Keep responses concise (2-4 sentences), warm, and actionable.
@@ -157,3 +157,4 @@ def clear_history(session_id):
     """Clear chat history for a session."""
     chat_histories.pop(session_id, None)
     return jsonify({"success": True, "message": "Chat history cleared."})
+

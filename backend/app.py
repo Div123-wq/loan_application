@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 # Ensure backend directory is in python path for serverless imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -55,7 +55,7 @@ app.register_blueprint(auth_bp)
 
 @app.route('/api/health', methods=['GET'])
 def health():
-    return jsonify({"status": "ok", "service": "LoanLens AI"})
+    return jsonify({"status": "ok", "service": "FinScan AI"})
 
 
 @app.errorhandler(413)
@@ -70,3 +70,4 @@ def server_error(e):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+

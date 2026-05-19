@@ -1,4 +1,4 @@
-import json
+﻿import json
 from flask import Blueprint, request, jsonify
 from routes.upload import get_document_text, document_store
 from services.analysis_service import perform_master_analysis
@@ -6,7 +6,7 @@ from services.github_ai_service import chat_json
 
 compare_bp = Blueprint('compare', __name__)
 
-COMPARE_SYSTEM = """You are LoanLens AI — a neutral loan comparison expert.
+COMPARE_SYSTEM = """You are FinScan AI — a neutral loan comparison expert.
 You objectively compare multiple loan documents to find the best option for the borrower.
 Always return structured, specific JSON comparisons."""
 
@@ -136,3 +136,4 @@ Return JSON:
         "loans": loan_summaries,
         "comparison": comparison
     })
+

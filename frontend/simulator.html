@@ -1,9 +1,16 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LoanLens AI — What-If Simulator &amp; Stress Detector</title>
+  <title>FinScan AI — What-If Simulator &amp; Stress Detector</title>
+  <script>
+    // Theme Flash Prevention
+    (function() {
+      const theme = localStorage.getItem('ll_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
   <script>
     if(!localStorage.getItem('ll_user') && !window.location.search.includes('demo=1')) {
       window.location.href = 'auth.html';
@@ -103,7 +110,7 @@
 <body>
   <!-- Navbar -->
   <nav class="navbar">
-    <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+    <div class="nav-brand"><div class="logo-icon">🔍</div>FinScan AI</div>
     <div class="nav-links">
       <a href="index.html">Home</a>
       <a href="dashboard.html">Dashboard</a>
@@ -112,6 +119,7 @@
       <a href="chat.html">AI Chat</a>
     </div>
     <div style="display:flex; align-items:center; gap:16px;">
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌙</button>
     <div id="google_translate_element"></div>
     <div id="navCtaArea">
       <button class="nav-cta" onclick="window.location.href='index.html'">New Upload</button>
@@ -233,24 +241,28 @@
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;">Provide basic monthly values so AI can run financial pressure tests.</p>
 
           <div style="display: flex; flex-direction: column; gap: 16px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
               <div>
-                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Net Salary (₹)</label>
+                <label id="labelSalaryField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Net Salary (₹)</label>
                 <input type="number" id="inputSalary" value="120000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
               </div>
               <div>
-                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Expenses (₹)</label>
+                <label id="labelExpensesField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Expenses (₹)</label>
                 <input type="number" id="inputExpenses" value="45000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
+              </div>
+              <div>
+                <label id="labelCommitmentField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Commitment (₹)</label>
+                <input type="number" id="inputCommitment" value="21700" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
               </div>
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 16px;">
               <div>
-                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Dependents Count</label>
+                <label id="labelDependentsField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Dependents Count</label>
                 <input type="number" id="inputDependents" value="3" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
               </div>
               <div>
-                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Additional Major Obligations</label>
+                <label id="labelObligationsField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Additional Major Obligations</label>
                 <input type="text" id="inputObligations" value="School fees in June, Rent" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
               </div>
             </div>
@@ -302,11 +314,11 @@
 
           <div style="display: flex; flex-direction: column; gap: 16px;">
             <div>
-              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Loan Start Date</label>
+              <label id="labelStartDateField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Loan Start Date</label>
               <input type="date" id="inputStartDate" value="2026-05-18" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
             </div>
             <div>
-              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Income / Salary (₹)</label>
+              <label id="labelPanicSalaryField" style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display: block; margin-bottom: 6px;">Monthly Income / Salary (₹)</label>
               <input type="number" id="inputPanicSalary" value="120000" style="background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; color: white; width: 100%;">
             </div>
 
@@ -360,7 +372,58 @@
 
   <script>
     const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
-    let docId = localStorage.getItem('ll_active_doc_id') || "";
+    const MOCK_ANALYSIS = {
+      "success": true,
+      "doc_id": "demo-doc-123",
+      "filename": "SBI_Home_Loan_Agreement.pdf",
+      "core_info": {
+        "loan_type": "Home Loan",
+        "lender_name": "State Bank of India",
+        "borrower_name": "Rohan Sharma",
+        "loan_amount": "₹50,00,000",
+        "loan_amount_numeric": 5000000,
+        "interest_rate": "8.5% p.a.",
+        "interest_rate_numeric": 8.5,
+        "interest_type": "Floating (linked to MCLR)",
+        "tenure": "20 years",
+        "tenure_months": 240,
+        "emi_amount": "₹43,391",
+        "emi_numeric": 43391,
+        "processing_fee": "₹10,000 (0.2%)",
+        "document_date": "18 May 2026",
+        "summary": "This home loan features a standard principal repayment structure.",
+        "document_quality": "Clear"
+      }
+    };
+
+    let docId = localStorage.getItem('ll_active_doc_id') || "demo-doc-123";
+
+    // Load active analysis to make simulator dynamic and category-aware!
+    let activeAnalysis = null;
+    let category = "Loan"; // Default
+    try {
+      const stored = localStorage.getItem('ll_analysis');
+      if (stored) {
+        activeAnalysis = JSON.parse(stored);
+        if (!activeAnalysis || !activeAnalysis.core_info) {
+          activeAnalysis = MOCK_ANALYSIS;
+        }
+      } else {
+        activeAnalysis = MOCK_ANALYSIS;
+      }
+      
+      const typeLower = (activeAnalysis.core_info?.loan_type || "").toLowerCase();
+      if (typeLower.includes("pet") || typeLower.includes("animal")) {
+        category = "Pet";
+      } else if (typeLower.includes("insurance") || typeLower.includes("policy")) {
+        category = "Insurance";
+      } else if (typeLower.includes("lease") || typeLower.includes("rent") || typeLower.includes("rental")) {
+        category = "Lease";
+      }
+    } catch(e) {
+      console.log("Error loading active analysis for simulator, using mock:", e);
+      activeAnalysis = MOCK_ANALYSIS;
+    }
 
     // User profile indicator binding
     const user = JSON.parse(localStorage.getItem('ll_user') || 'null');
@@ -394,6 +457,7 @@
         return;
       }
 
+      const commitment = parseFloat(document.getElementById('inputCommitment').value) || 0;
       const btn = document.getElementById('simulateBtn');
       btn.textContent = "⏳ Calculating AI Simulation...";
       btn.disabled = true;
@@ -402,7 +466,7 @@
         const res = await fetch(`${API}/api/simulate/whatif`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ doc_id: docId, scenario: scenario })
+          body: JSON.stringify({ doc_id: docId, scenario: scenario, commitment: commitment })
         });
         const data = await res.json();
         
@@ -458,6 +522,7 @@
     async function runPressureAnalysis() {
       const salary = parseFloat(document.getElementById('inputSalary').value);
       const expenses = parseFloat(document.getElementById('inputExpenses').value);
+      const commitment = parseFloat(document.getElementById('inputCommitment').value);
       const dependents = parseInt(document.getElementById('inputDependents').value);
       const obligations = document.getElementById('inputObligations').value;
 
@@ -469,6 +534,7 @@
             doc_id: docId,
             salary: salary,
             expenses: expenses,
+            commitment: commitment,
             family_size: dependents,
             obligations: obligations
           })
@@ -481,7 +547,7 @@
         document.getElementById('stressScoreText').textContent = data.stress_score + "%";
         document.getElementById('stressVerdict').textContent = data.verdict;
 
-        if(data.stress_level.toLowerCase().includes('high')) {
+        if(data.stress_level.toLowerCase().includes('high') || data.stress_level.toLowerCase().includes('critical')) {
           document.getElementById('stressLevelBadge').className = "badge badge-red";
         } else if(data.stress_level.toLowerCase().includes('medium')) {
           document.getElementById('stressLevelBadge').className = "badge badge-amber";
@@ -544,6 +610,7 @@
     async function runDeadlinePanicPredictor() {
       const startDate = document.getElementById('inputStartDate').value;
       const salary = parseFloat(document.getElementById('inputPanicSalary').value) || 50000;
+      const commitment = parseFloat(document.getElementById('inputCommitment').value) || 0;
 
       const btn = document.getElementById('panicPredictBtn');
       btn.textContent = "⏳ Predicting Timelines...";
@@ -556,7 +623,8 @@
           body: JSON.stringify({
             doc_id: docId,
             start_date: startDate,
-            salary: salary
+            salary: salary,
+            commitment: commitment
           })
         });
         const data = await res.json();
@@ -618,6 +686,164 @@
       c.appendChild(t);
       setTimeout(() => t.remove(), 3500);
     }
+
+    // Dynamic UI Category Normalizer Function
+    function initSimulatorCategory() {
+      const templatesContainer = document.querySelector('.scenario-grid');
+      let templates = [];
+      
+      let commitmentVal = 0;
+      if (activeAnalysis && activeAnalysis.core_info) {
+        commitmentVal = activeAnalysis.core_info.emi_numeric || parseFloat(String(activeAnalysis.core_info.emi_amount || "").replace(/[^\d.]/g, '')) || 0;
+      }
+
+      if (category === "Pet") {
+        document.querySelector('h2.grad-text').textContent = "🔮 What-If Pet Policy Simulator";
+        document.querySelector('.section-header p').textContent = "Predict premium revisions, claim co-pays, and exclusion disputes using pet insurance models.";
+        
+        templates = [
+          "What if my pet undergoes emergency hip replacement surgery?",
+          "What happens if I forget to disclose a past vaccination delay?",
+          "What if the provider raises the monthly premium by 25% next year?",
+          "Can I request a zero-deductible rider upgrade next month?"
+        ];
+        
+        document.querySelector('h3.card-title').textContent = "📝 Your Pet Care Budget";
+        document.getElementById('labelSalaryField').textContent = "Monthly Household Income (₹)";
+        document.getElementById('labelExpensesField').textContent = "Monthly General Expenses (₹)";
+        document.getElementById('labelCommitmentField').textContent = "Monthly Pet Premium (₹)";
+        document.getElementById('inputCommitment').value = commitmentVal || 1250;
+        document.getElementById('labelDependentsField').textContent = "Count of Pets Insured";
+        document.getElementById('labelObligationsField').textContent = "Other Pet Care Obligations (Food, Vet)";
+        document.getElementById('inputObligations').value = "Annual vaccines, Special diet kibble";
+        
+        document.querySelectorAll('h2.grad-text')[2].textContent = "📅 Policy Deadline & Renewal Predictor";
+        document.querySelectorAll('.section-header p')[2].textContent = "Timeline forecasting showing exact intersections of premium renewals and vet checkup deadlines.";
+        document.querySelectorAll('h3.card-title')[2].textContent = "📝 Pet Policy Timeline Inputs";
+        document.getElementById('labelStartDateField').textContent = "Policy Registration Date";
+        document.getElementById('labelPanicSalaryField').textContent = "Monthly Household Income (₹)";
+        document.getElementById('forecastReason').textContent = "Premium hikes balance out as household pet medical savings pool matures";
+        
+      } else if (category === "Insurance") {
+        document.querySelector('h2.grad-text').textContent = "🔮 What-If Insurance Policy Simulator";
+        document.querySelector('.section-header p').textContent = "Predict premium revisions, co-pay exposures, and claim rejection risks using insurance-specific models.";
+        
+        templates = [
+          "What if I undergo a specialized surgery bill of ₹3,0,000?",
+          "What happens if my medical treatment is at a non-network hospital?",
+          "What if I miss paying my annual premium by 2 weeks?",
+          "Can I request a waiver of the 36-month pre-existing waiting period?"
+        ];
+        
+        document.querySelector('h3.card-title').textContent = "📝 Your Insurance Budget";
+        document.getElementById('labelSalaryField').textContent = "Monthly Household Income (₹)";
+        document.getElementById('labelExpensesField').textContent = "Monthly Basic Expenses (₹)";
+        document.getElementById('labelCommitmentField').textContent = "Monthly Premium Share (₹)";
+        document.getElementById('inputCommitment').value = commitmentVal || 708;
+        document.getElementById('labelDependentsField').textContent = "Family Members Covered";
+        document.getElementById('labelObligationsField').textContent = "Other Health Add-ons / Obligations";
+        document.getElementById('inputObligations').value = "Annual wellness health checkups";
+        
+        document.querySelectorAll('h2.grad-text')[2].textContent = "📅 Policy Deadline & Renewal Predictor";
+        document.querySelectorAll('.section-header p')[2].textContent = "Timeline forecasting showing exact intersections of premium renewals and standard tax/medical events.";
+        document.querySelectorAll('h3.card-title')[2].textContent = "📝 Insurance Policy Timeline Inputs";
+        document.getElementById('labelStartDateField').textContent = "Policy Inception Date";
+        document.getElementById('labelPanicSalaryField').textContent = "Monthly Household Income (₹)";
+        document.getElementById('forecastReason').textContent = "Premium stability strengthens as waiting periods for exclusions expire";
+ 
+      } else if (category === "Lease") {
+        document.querySelector('h2.grad-text').textContent = "🔮 What-If Lease Simulator";
+        document.querySelector('.section-header p').textContent = "Predict deposit deductions, rental hikes, and eviction pressures using tenant-specific models.";
+        
+        templates = [
+          "What if I need to terminate the lease early in month 6?",
+          "What happens if the landlord repaints the premises using my deposit?",
+          "What if I am late paying the rent by 5 days?",
+          "Can I request a waiver of the automatic 12% rent escalation?"
+        ];
+        
+        document.querySelector('h3.card-title').textContent = "📝 Your Rental Household Budget";
+        document.getElementById('labelSalaryField').textContent = "Monthly Net Salary (₹)";
+        document.getElementById('labelExpensesField').textContent = "Monthly Household Expenses (₹)";
+        document.getElementById('labelCommitmentField').textContent = "Monthly Rent (₹)";
+        document.getElementById('inputCommitment').value = commitmentVal || 22000;
+        document.getElementById('labelDependentsField').textContent = "Co-tenants Count";
+        document.getElementById('labelObligationsField').textContent = "Additional Rental Obligations (Society, Water)";
+        document.getElementById('inputObligations').value = "Quarterly society maintenance, Electricity bills";
+        
+        document.querySelectorAll('h2.grad-text')[2].textContent = "📅 Lease Eviction & Milestone Predictor";
+        document.querySelectorAll('.section-header p')[2].textContent = "Timeline forecasting showing exact intersections of lease renewal spikes and quarterly relocation events.";
+        document.querySelectorAll('h3.card-title')[2].textContent = "📝 Lease Timeline Inputs";
+        document.getElementById('labelStartDateField').textContent = "Lease Start Date";
+        document.getElementById('labelPanicSalaryField').textContent = "Monthly Net Income (₹)";
+        document.getElementById('forecastReason').textContent = "Relocation stress declines as stability with the landlord is established";
+ 
+      } else {
+        templates = [
+          "What if I miss 2 EMI payments?",
+          "What happens if I foreclosure/prepay the whole loan in year 5?",
+          "What if float interest rates rise by 2% next year?",
+          "Can I request a 3-month EMI holiday?"
+        ];
+        document.getElementById('labelSalaryField').textContent = "Monthly Net Salary (₹)";
+        document.getElementById('labelExpensesField').textContent = "Monthly Expenses (₹)";
+        document.getElementById('labelCommitmentField').textContent = "Monthly Loan EMI (₹)";
+        document.getElementById('inputCommitment').value = commitmentVal || 21700;
+        document.getElementById('labelDependentsField').textContent = "Dependents Count";
+        document.getElementById('labelObligationsField').textContent = "Additional Major Obligations";
+        
+        document.querySelectorAll('h2.grad-text')[2].textContent = "📅 Deadline Panic Predictor";
+        document.querySelectorAll('.section-header p')[2].textContent = "Long-term timeline forecasting showing exact intersections of EMI milestones and external life events.";
+        document.querySelectorAll('h3.card-title')[2].textContent = "📝 Loan Timeline Inputs";
+        document.getElementById('labelStartDateField').textContent = "Loan Start Date";
+        document.getElementById('labelPanicSalaryField').textContent = "Monthly Income / Salary (₹)";
+      }
+      
+      if (templates.length > 0 && templatesContainer) {
+        templatesContainer.innerHTML = '';
+        templates.forEach(t => {
+          const btn = document.createElement('button');
+          btn.className = 'scenario-btn';
+          btn.onclick = () => setTemplate(t);
+          
+          let emoji = "🔮";
+          if (t.toLowerCase().includes("miss") || t.toLowerCase().includes("late")) emoji = "🔴";
+          else if (t.toLowerCase().includes("prepay") || t.toLowerCase().includes("terminate") || t.toLowerCase().includes("surgery")) emoji = "🔄";
+          else if (t.toLowerCase().includes("rate") || t.toLowerCase().includes("premium") || t.toLowerCase().includes("repaint")) emoji = "📈";
+          else if (t.toLowerCase().includes("holiday") || t.toLowerCase().includes("waiver")) emoji = "🛡️";
+          
+          btn.textContent = `${emoji} ${t}`;
+          templatesContainer.appendChild(btn);
+        });
+      }
+    }
+
+    // Initialize Theme Switcher Icon
+    function initThemeBtn() {
+      const currentTheme = localStorage.getItem('ll_theme') || 'dark';
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) {
+        btn.textContent = currentTheme === 'light' ? '☀️' : '🌙';
+      }
+    }
+
+    function toggleTheme() {
+      const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      localStorage.setItem('ll_theme', newTheme);
+      
+      const btn = document.getElementById('themeToggleBtn');
+      if (btn) {
+        btn.textContent = newTheme === 'light' ? '☀️' : '🌙';
+      }
+      
+      window.dispatchEvent(new Event('themeChanged'));
+      toast(`☀️ Theme switched to ${newTheme} mode!`, 'success');
+    }
+
+    initSimulatorCategory();
+    initThemeBtn();
   </script>
 
 <!-- Google Translate Script -->
@@ -634,3 +860,4 @@ function googleTranslateElementInit() {
 <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
+

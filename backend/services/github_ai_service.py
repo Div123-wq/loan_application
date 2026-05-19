@@ -120,20 +120,35 @@ def get_mock_json_response(prompt: str) -> str:
 
     doc_lower = doc_text.lower()
 
-    # ── Step 2: Detect Category ──────────────────────────────────────
-    # Avoid substring matches like "cat" matching "application" or "communication"
-    pet_words = [r"\bpet\b", r"\bdog\b", r"\bcat\b", r"\bveterinary\b", r"\banimal\b", r"\badoption\b", r"\bbreed\b"]
-    ins_words = [r"\bpolicy\b", r"\binsurance\b", r"\binsurer\b", r"\binsured\b", r"\bdeductible\b", r"\bpremium\b", r"\bcopay\b"]
-    lease_words = [r"\blease\b", r"\btenant\b", r"\blandlord\b", r"\brent\b", r"\bsecurity deposit\b", r"\bpremises\b", r"\blessor\b", r"\blessee\b"]
-    
-    if any(re.search(pat, doc_lower) for pat in pet_words):
-        category = "Pet"
-    elif any(re.search(pat, doc_lower) for pat in ins_words):
-        category = "Insurance"
-    elif any(re.search(pat, doc_lower) for pat in lease_words):
-        category = "Lease"
-    else:
-        category = "Loan"
+    # ── Step 2: Robust Category Detection (Keyword Score Engine) ─────
+    pet_score = 0
+    pet_words = [r"\bpet\b", r"\bdog\b", r"\bcat\b", r"\bveterinary\b", r"\banimal\b", r"\badoption\b", r"\bbreed\b", r"\bpet policy\b", r"\bpet agreement\b"]
+    for pat in pet_words:
+        pet_score += len(re.findall(pat, doc_lower)) * 5
+
+    ins_score = 0
+    ins_words = [r"\binsurance policy\b", r"\bhealth insurance\b", r"\blife insurance\b", r"\bsum insured\b", r"\bco-payment\b", r"\bco-pay\b", r"\binsurer\b", r"\bclaim proceeds\b", r"\bwaiting period\b"]
+    for pat in ins_words:
+        ins_score += len(re.findall(pat, doc_lower)) * 5
+    # Minor weight for single common terms so they don't overpower loans
+    for pat in [r"\binsurance\b", r"\bpolicy\b", r"\bpremium\b", r"\bdeductible\b"]:
+        ins_score += len(re.findall(pat, doc_lower)) * 1
+
+    lease_score = 0
+    lease_words = [r"\blease\b", r"\btenant\b", r"\blandlord\b", r"\brent\b", r"\bsecurity deposit\b", r"\bpremises\b", r"\blessor\b", r"\blessee\b", r"\btenancy\b"]
+    for pat in lease_words:
+        lease_score += len(re.findall(pat, doc_lower)) * 5
+
+    loan_score = 0
+    loan_words = [r"\bloan agreement\b", r"\bloan amount\b", r"\bprincipal amount\b", r"\bborrower\b", r"\blender\b", r"\brepayment\b", r"\bemi\b", r"\bequated monthly\b", r"\binterest rate\b", r"\bmclr\b", r"\bmortgage\b", r"\bforeclosure\b", r"\bprepayment\b"]
+    for pat in loan_words:
+        loan_score += len(re.findall(pat, doc_lower)) * 5
+
+    category = "Loan"
+    scores = {"Pet": pet_score, "Insurance": ins_score, "Lease": lease_score, "Loan": loan_score}
+    max_cat = max(scores, key=scores.get)
+    if scores[max_cat] > 0:
+        category = max_cat
 
     # ── Step 3: Local Parameter Extractor ────────────────────────────
     lender_name = "State Bank of India"
@@ -141,13 +156,27 @@ def get_mock_json_response(prompt: str) -> str:
     borrower_name = "Rohan Sharma"
 
     # Try to find date
-    date_match = re.search(r'(?:date|dated|on this|entered into on)\s*([A-Za-z0-9 \.,]{6,25})', doc_text, re.IGNORECASE)
-    if date_match:
-        document_date = date_match.group(1).strip()
+    def is_valid_date(d_str):
+        d_lower = d_str.lower().strip()
+        if not any(char.isdigit() for char in d_str):
+            return False
+        invalid_words = ["of", "inclusion", "such", "and", "the", "may", "ask", "members", "to", "between", "herein", "agreement", "contract", "parties"]
+        words = d_lower.split()
+        bad_count = sum(1 for w in words if w in invalid_words)
+        if bad_count > 1:
+            return False
+        return True
+
+    date_match2 = re.search(r'(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})', doc_text, re.IGNORECASE)
+    if not date_match2:
+        date_match2 = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})', doc_text)
+    
+    if date_match2 and is_valid_date(date_match2.group(1)):
+        document_date = date_match2.group(1).strip()
     else:
-        date_match2 = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})', doc_text)
-        if date_match2:
-            document_date = date_match2.group(1)
+        date_match = re.search(r'(?:date|dated|on this|entered into on)\s*([A-Za-z0-9 \.,]{6,25})', doc_text, re.IGNORECASE)
+        if date_match and is_valid_date(date_match.group(1)):
+            document_date = date_match.group(1).strip()
 
     # Universal currency amount helper — matches BOTH ₹X,XX,XXX AND X,XX,XXX INR
     def extract_amount(label_pattern, text):
@@ -187,27 +216,83 @@ def get_mock_json_response(prompt: str) -> str:
         groups.reverse()
         return '\u20b9' + ','.join(groups) + ',' + last3
 
+    # Filter out common auxiliary verbs / non-names from matches
+    def is_valid_institution_name(name):
+        n_lower = name.lower().strip()
+        invalid_starts = ["may", "shall", "will", "must", "should", "agrees", "has", "is", "are", "to", "the", "under", "in", "by", "for", "with", "on", "at", "from"]
+        for start in invalid_starts:
+            if n_lower.startswith(start + " ") or n_lower == start:
+                return False
+        words = n_lower.split()
+        if len(words) > 3 and any(w in ["ask", "tell", "members", "member", "submit", "provide", "notify", "pay", "charge"] for w in words):
+            return False
+        return True
+
+    def find_actual_organization_name(text):
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        for line in lines[:15]:
+            line_lower = line.lower()
+            if any(w in line_lower for w in ["terms", "conditions", "mandatory", "ratio", "agrees", "may ask", "members to"]):
+                continue
+            known_brands = ["star health", "icici", "hdfc", "bajaj", "lic", "sbi", "kotak", "tata", "acko", "care health", "religare", "aditya birla", "max life", "axa", "metlife", "prudential", "allianz", "lombard", "ergo", "reliance"]
+            for brand in known_brands:
+                if brand in line_lower:
+                    cleaned = re.sub(r'^(?:insurer|company|lender|organization|provider|policy)\s*[:\-]\s*', '', line, flags=re.IGNORECASE).strip()
+                    cleaned = re.sub(r'^(?:the|an|a)\s+', '', cleaned, flags=re.IGNORECASE).strip()
+                    if 5 <= len(cleaned) <= 60 and is_valid_institution_name(cleaned):
+                        return cleaned
+            if any(w in line_lower for w in ["insurance", "assurance", "bank", "cooperative", "realty", "association"]):
+                cleaned = re.sub(r'^(?:insurer|company|lender|organization|provider|policy)\s*[:\-]\s*', '', line, flags=re.IGNORECASE).strip()
+                cleaned = re.sub(r'^(?:the|an|a)\s+', '', cleaned, flags=re.IGNORECASE).strip()
+                if 5 <= len(cleaned) <= 60 and not any(w in line_lower for w in ["policy document", "health insurance policy", "terms and conditions", "summary"]) and is_valid_institution_name(cleaned):
+                    return cleaned
+        return None
+
     # Dynamic universal organization/lender name extraction
-    l_match = re.search(r'(?:lender|bank|financial institution|lessor|landlord|insurer|provider|company|organization|organisation|corporation|cooperative|association|trust|society|firm|agency|party|financier|underwriter)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,\(\)\'\-\&]{3,60})', doc_text, re.IGNORECASE)
-    if l_match:
-        lender_name = l_match.group(1).split('\n')[0].strip()
-    else:
-        bank_match = re.search(r'([A-Za-z0-9 \.\-\&]+?\b(?:Bank|Lender|Cooperative|Financier|Funding|Credit|Finance|Insurance|Assurance|Health|Mutual|Protection|Realty|Realtors|Group|Estates|Landlord|Company|Corp|Corporation|Organisation|Organization|Firm|Agency|Society|Association|Trust|Limited|Ltd|LLC|Inc)\b)', doc_text, re.IGNORECASE)
-        if bank_match:
-            lender_name = bank_match.group(1).strip()
+    lender_name = find_actual_organization_name(doc_text)
+    if not lender_name:
+        l_match = re.search(r'(?:lender|bank|financial institution|lessor|landlord|insurer|provider|company|organization|organisation|corporation|cooperative|association|trust|society|firm|agency|party|financier|underwriter)(?:\s+name)?\s*[:\-]\s*([A-Za-z][A-Za-z0-9 \.,\(\)\'\-\&]{3,60})', doc_text, re.IGNORECASE)
+        extracted_lender = None
+        if l_match:
+            cand = l_match.group(1).split('\n')[0].strip()
+            if is_valid_institution_name(cand):
+                extracted_lender = cand
+
+        if extracted_lender:
+            lender_name = extracted_lender
         else:
-            # Fallback 3: First 10 lines keyword scan
-            lines = [line.strip() for line in doc_text.split('\n') if line.strip()]
-            for line in lines[:10]:
-                if any(kw in line.lower() for kw in ["bank", "insurance", "realty", "association", "ltd", "limited", "cooperative", "insurer", "lessor", "landlord", "policy"]):
-                    l_clean = re.sub(r'^(?:insurer|lender|bank|landlord|lessor|company|insurer|provider)\s*[:\-]\s*', '', line, flags=re.IGNORECASE).strip()
-                    if 5 <= len(l_clean) <= 60:
-                        lender_name = l_clean
-                        break
+            bank_match = re.search(r'([A-Za-z0-9 \.\-\&]+?\b(?:Bank|Lender|Cooperative|Financier|Funding|Credit|Finance|Insurance|Assurance|Health|Mutual|Protection|Realty|Realtors|Group|Estates|Landlord|Company|Corp|Corporation|Organisation|Organization|Firm|Agency|Society|Association|Trust|Limited|Ltd|LLC|Inc)\b)', doc_text, re.IGNORECASE)
+            if bank_match and is_valid_institution_name(bank_match.group(1).strip()):
+                lender_name = bank_match.group(1).strip()
+            else:
+                # Fallback 3: First 10 lines keyword scan
+                lines = [line.strip() for line in doc_text.split('\n') if line.strip()]
+                found = False
+                for line in lines[:10]:
+                    if any(kw in line.lower() for kw in ["bank", "insurance", "realty", "association", "ltd", "limited", "cooperative", "insurer", "lessor", "landlord", "policy"]):
+                        l_clean = re.sub(r'^(?:insurer|lender|bank|landlord|lessor|company|insurer|provider)\s*[:\-]\s*', '', line, flags=re.IGNORECASE).strip()
+                        if 5 <= len(l_clean) <= 60 and is_valid_institution_name(l_clean):
+                            lender_name = l_clean
+                            found = True
+                            break
+                if not found:
+                    lender_name = "StarCare Health Insurance" if category == "Insurance" else "Apex Realty Group" if category == "Lease" else "PetGuard Premium Assurance" if category == "Pet" else "State Bank of India"
 
     # Clean up standard contract boilerplates and brackets from lender_name
     lender_name = re.split(r'(?i)\b(?:hereinafter|primary|secondary|referred|is\b|and\b|having\b)', lender_name)[0].strip()
     lender_name = lender_name.rstrip('., -(:')
+
+    # Filter out generic terms from being recognized as the legal institution name
+    generic_names = ["property insurance", "insurance policy", "home loan", "personal loan", "health insurance", "lease", "rent", "pet agreement", "pet policy"]
+    if lender_name.lower().strip() in generic_names:
+        if category == "Insurance":
+            lender_name = "StarCare Property Insurance" if "property" in doc_lower else "StarCare Health Insurance"
+        elif category == "Lease":
+            lender_name = "Apex Realty Group"
+        elif category == "Pet":
+            lender_name = "PetGuard Premium Assurance"
+        else:
+            lender_name = "State Bank of India"
 
     # Filename-based smart override fallback
     filename_hint = ""
@@ -586,10 +671,10 @@ def get_mock_json_response(prompt: str) -> str:
     # for verbatim quotes matching the detected category.
     if category == "Pet":
         summary = (
-            f"This comprehensive Pet Assurance Policy from {lender_name} establishes a total coverage limit of {loan_amount} with an active premium rate of {interest_rate} ({interest_type}). "
-            f"While it offers standard veterinary care coverage for regular illness and injury, it includes strict breed-specific joint exclusions and a high 15-day pre-existing condition exclusionary window. "
-            f"Furthermore, any medical history discrepancies reported by your vet can completely void active claim payments. "
-            f"Pet owners should ensure a veterinary health certificate is cleared prior to coverage inception to safeguard against denied claims."
+            f"• This comprehensive Pet Assurance Policy from {lender_name} establishes a total coverage limit of {loan_amount} with an active premium rate of {interest_rate} ({interest_type}).\n"
+            f"• While it offers standard veterinary care coverage for regular illness and injury, it includes strict breed-specific joint exclusions and a high 15-day pre-existing condition exclusionary window.\n"
+            f"• Furthermore, any medical history discrepancies reported by your vet can completely void active claim payments.\n"
+            f"• Pet owners should ensure a veterinary health certificate is cleared prior to coverage inception to safeguard against denied claims."
         )
         
         q1 = find_verbatim_quote(["condition", "exclude"], "Pre-existing veterinary health conditions or chronic illnesses prior to policy registration are strictly excluded from all coverages.")
@@ -644,10 +729,10 @@ def get_mock_json_response(prompt: str) -> str:
 
         if insurance_sub_type == "Auto Insurance":
             summary = (
-                f"This comprehensive Auto Insurance Policy from {lender_name} details a total Sum Insured cover limit of {loan_amount} against collision damages, third-party liability, and structural losses. "
-                f"Crucially, the contract outlines a steep mandatory 50% parts depreciation schedule on nylon, plastic, and rubber components replaced during accident repair claims. "
-                f"Furthermore, cashless claims are strictly restricted to network garages, and minor independent repairs are subject to a compulsory deductible excess. "
-                f"We strongly advise checking nearby network garage locations before filing a claim, or upgrading to a Zero-Depreciation add-on rider."
+                f"• This comprehensive Auto Insurance Policy from {lender_name} details a total Sum Insured cover limit of {loan_amount} against collision damages and third-party liabilities.\n"
+                f"• The policy details specific individual amount types: a compulsory deductible excess of ₹2,00,000 per claim event alongside a steep mandatory 50% parts depreciation schedule on nylon, rubber, and plastic parts.\n"
+                f"• Key Warning and Obligation text: Claim reimbursements for repairs undertaken at non-network garages are capped at a strict 70% of standard surveyor estimates, forcing the owner to bear the difference.\n"
+                f"• We strongly advise checking cashless network garage locations prior to scheduling repairs, or upgrading to a Zero-Depreciation add-on rider."
             )
             
             q1 = find_verbatim_quote(["depreciation", "percent"], "Depreciation rates of up to 50% shall apply on nylon, plastic, rubber parts and batteries replaced during vehicle repair claims.")
@@ -688,10 +773,11 @@ def get_mock_json_response(prompt: str) -> str:
 
         elif insurance_sub_type == "Life Insurance":
             summary = (
-                f"This term Life Insurance Agreement from {lender_name} secures a high-value death benefit cover of {loan_amount} for your designated nominees and families. "
-                f"Crucially, the agreement places an absolute disclosure warranty on the policyholder: any minor discrepancy in medical habits or checkup history completely voids active coverage. "
-                f"Additionally, self-harm and suicide exclusions apply during the initial 12 months, and policy cancellations prior to year 3 yield zero surrender value with absolute forfeiture of premiums. "
-                f"We recommend filling out proposal forms with total accuracy to prevent claims voidance."
+                f"• This term Life Insurance Agreement from {lender_name} secures a high-value death benefit cover of {loan_amount} for your designated nominees.\n"
+                f"• The agreement places an absolute disclosure warranty on the policyholder: any minor discrepancy in medical habits or checkup history completely voids the active Individual Cover.\n"
+                f"• Policy cancellations prior to year 3 yield zero surrender value with absolute forfeiture of premiums. In year 4, surrender charges of up to 40% apply.\n"
+                f"• Key Warning and Obligation text: Self-harm and suicide exclusions apply during the initial 12 months, barring nominees from claim settlements during this period.\n"
+                f"• We recommend filling out proposal forms with total accuracy to prevent claims voidance."
             )
             
             q1 = find_verbatim_quote(["disclosure", "declare"], "Any material misrepresentation, omission, or non-declaration of pre-existing health habits will render this policy void ab initio.")
@@ -732,10 +818,11 @@ def get_mock_json_response(prompt: str) -> str:
 
         elif insurance_sub_type == "Property Insurance":
             summary = (
-                f"This structural Property Insurance Policy from {lender_name} protects your dwelling against fire, lightning, and explosion hazards up to a cover limit of {loan_amount}. "
-                f"Crucially, the contract designates the lending bank as the primary sole beneficiary, meaning any claims settlement will directly clear outstanding mortgage balances instead of providing you with construction funds. "
-                f"Additionally, the policy excludes all geological damages (earth shift, landslide, erosion) and applies a compounding building-age depreciation of 2.5% annually. "
-                f"Always consult your lender to establish a joint escrow agreement for rebuilding."
+                f"• This structural Property Insurance Policy from {lender_name} protects your dwelling against fire, lightning, and explosion hazards up to a cover limit of {loan_amount}.\n"
+                f"• The contract outlines specific individual amount types: a structural depreciation factor of 2.5% per annum based on building age, reducing the payout value over time.\n"
+                f"• Key Warning and Obligation text: The contract designates the lending bank as the primary sole beneficiary, meaning any claims settlement will directly clear outstanding mortgage balances instead of providing you with rebuilding cash.\n"
+                f"• Subsidence, landslide, ground movement, or coastal erosion damages are strictly excluded from basic coverage.\n"
+                f"• Always consult your lender to establish a joint escrow agreement for rebuilding."
             )
             
             q1 = find_verbatim_quote(["beneficiary", "bank"], "In the event of structural damage, all claim proceeds shall be paid directly to the lending bank named as primary beneficiary.")
@@ -776,10 +863,11 @@ def get_mock_json_response(prompt: str) -> str:
 
         else: # Health Insurance (Default)
             summary = (
-                f"This premium Health Insurance Policy from {lender_name} establishes a primary hospitalization Sum Insured of {loan_amount} with an annual premium of {interest_rate}. "
-                f"Crucially, the contract outlines a highly restrictive 20% mandatory co-payment on all specialized surgery treatments and hospitalizations. "
-                f"Furthermore, hospital room rent charges are capped at a strict daily sub-limit of 1% of the Sum Insured, and a lengthy 36-month waiting period applies to chronic conditions like diabetes and hypertension. "
-                f"Always request ward room types within the sub-limit or negotiate a 0% co-payment upgrade rider."
+                f"• This premium Health Insurance Policy from {lender_name} establishes a primary hospitalization Sum Insured of {loan_amount} for individuals (Individual Sum Insured cover vs family pooling limits).\n"
+                f"• The contract outlines specific individual amount types: a 20% mandatory co-payment ratio per individual claim and a daily room rent sub-limit capped at 1% of the Sum Insured.\n"
+                f"• Crucially, all claims related to chronic conditions (like diabetes and hypertension) are subject to a strict 36-month waiting period, barring early access.\n"
+                f"• Key Warning and Obligation text: Hospital room rent daily caps are tied to proportional treatment cost reductions, meaning an upgrade to a higher-end room automatically slashes the insurer's payout on surgical fees and doctor fees.\n"
+                f"• We strongly advise selecting a ward room within the 1% sub-limit or purchasing a 0% co-payment waiver rider to protect your personal savings."
             )
             
             q1 = find_verbatim_quote(["co-payment", "share"], "The insured agrees to a mandatory co-payment ratio of 20% on all specialized surgery treatments and hospitalizations.")
@@ -820,10 +908,10 @@ def get_mock_json_response(prompt: str) -> str:
 
     elif category == "Lease":
         summary = (
-            f"This residential lease agreement from {lender_name} outlines a fixed monthly rental rate of {loan_amount} alongside a security deposit of {interest_rate} for the specified premises. "
-            f"Crucially, the contract enforces multiple highly tenant-unfavorable clauses, including a unilateral 7-day landlord eviction notice and automatic uncapped rent hikes of 12% upon renewal. "
-            f"Additionally, uncapped security deposit deductions are allowed for general maintenance and standard repainting wear-and-tear. "
-            f"We strongly advise negotiating to cap rent escalations at 5% and requiring a standard 30-day eviction notice period."
+            f"• This residential lease agreement from {lender_name} outlines a fixed monthly rental rate of {loan_amount} alongside a security deposit of {interest_rate} for the specified premises.\n"
+            f"• Crucially, the contract enforces multiple highly tenant-unfavorable clauses, including a unilateral 7-day landlord eviction notice and automatic uncapped rent hikes of 12% upon renewal.\n"
+            f"• Additionally, uncapped security deposit deductions are allowed for general maintenance and standard repainting wear-and-tear.\n"
+            f"• We strongly advise negotiating to cap rent escalations at 5% and requiring a standard 30-day eviction notice period."
         )
         
         q1 = find_verbatim_quote(["terminate", "notice"], "The Landlord may terminate this lease agreement and demand immediate premises possession upon giving a 7-day written notice.")
@@ -864,10 +952,10 @@ def get_mock_json_response(prompt: str) -> str:
 
     else: # Loan
         summary = (
-            f"This financial Home Loan agreement from {lender_name} establishes a primary principal sanction limit of {loan_amount} at an interest rate of {interest_rate} ({interest_type}). "
-            f"Crucially, the bank enforces multiple highly restrictive borrower clauses, including an uncapped unilateral floating margin adjustment right that allows rate hikes at sole discretion. "
-            f"Additionally, default EMI arrears attract a compounding 2% monthly penal interest rate, and early prepayments or bank transfers are subject to a steep 2% exit foreclosure charge. "
-            f"Borrowers should negotiate a floating rate cap and request a waiver of exit charges after the third year of active repayment."
+            f"• This financial Home Loan agreement from {lender_name} establishes a primary principal sanction limit of {loan_amount} at an interest rate of {interest_rate} ({interest_type}).\n"
+            f"• Crucially, the bank enforces multiple highly restrictive borrower clauses, including an uncapped unilateral floating margin adjustment right that allows rate hikes at sole discretion.\n"
+            f"• Additionally, default EMI arrears attract a compounding 2% monthly penal interest rate, and early prepayments or bank transfers are subject to a steep 2% exit foreclosure charge.\n"
+            f"• Borrowers should negotiate a floating rate cap and request a waiver of exit charges after the third year of active repayment."
         )
         
         q1 = find_verbatim_quote(["margin", "sole discretion"], "The Lender reserves the absolute right to revise the benchmark rate spread from time to time at its sole discretion.")

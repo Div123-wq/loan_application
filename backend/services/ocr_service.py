@@ -1,4 +1,4 @@
-import base64
+﻿import base64
 import io
 from PIL import Image
 
@@ -23,8 +23,18 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     if has_fitz:
         try:
             doc = fitz.open(stream=file_bytes, filetype="pdf")
+            total_pages = len(doc)
             full_text = []
-            for page_num, page in enumerate(doc):
+            
+            # Intelligent page sampling if more than 10 pages
+            if total_pages <= 10:
+                pages_to_extract = list(range(total_pages))
+            else:
+                pages_to_extract = list(range(5)) + list(range(total_pages - 5, total_pages))
+                full_text.append(f"--- [FinScan SYSTEM: Document has {total_pages} pages. Sampling First 5 and Last 5 pages to prevent server timeout] ---")
+                
+            for page_num in pages_to_extract:
+                page = doc[page_num]
                 text = page.get_text("text")
                 full_text.append(f"--- Page {page_num + 1} ---\n{text}")
             doc.close()
@@ -36,8 +46,18 @@ def extract_text_from_pdf(file_bytes: bytes) -> str:
     if has_pypdf:
         try:
             reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+            total_pages = len(reader.pages)
             full_text = []
-            for page_num, page in enumerate(reader.pages):
+            
+            # Intelligent page sampling if more than 10 pages
+            if total_pages <= 10:
+                pages_to_extract = list(range(total_pages))
+            else:
+                pages_to_extract = list(range(5)) + list(range(total_pages - 5, total_pages))
+                full_text.append(f"--- [FinScan SYSTEM: Document has {total_pages} pages. Sampling First 5 and Last 5 pages to prevent server timeout] ---")
+                
+            for page_num in pages_to_extract:
+                page = reader.pages[page_num]
                 text = page.extract_text()
                 full_text.append(f"--- Page {page_num + 1} ---\n{text}")
             return "\n".join(full_text)
@@ -82,4 +102,5 @@ def extract_text_from_file(file_bytes: bytes, filename: str) -> dict:
         except Exception:
             text = file_bytes.decode("utf-8", errors="ignore")
             return {"text": text, "is_image": False, "image_b64": None}
+
 

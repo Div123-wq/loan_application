@@ -1,17 +1,42 @@
-import uuid
+﻿import uuid
 from flask import Blueprint, request, jsonify
 
 auth_bp = Blueprint('auth', __name__)
 
-# Lightweight in-memory user store for instant out-of-the-box local demo run
-# Format: { email: { "name": str, "password": str, "id": str } }
+import os
+import json
+
+# Lightweight user store with filesystem persistence to prevent losing users on reload
+DB_FILE = os.path.join(os.path.dirname(__file__), '..', 'users.json')
+
 USER_DB = {
-    "demo@loanlens.ai": {
+    "demo@FinScan.ai": {
         "id": "user_demo_123",
         "name": "Sarah Jenkins",
         "password": "password123"
     }
 }
+
+def load_users():
+    global USER_DB
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    USER_DB.update(data)
+        except Exception as e:
+            print("Error loading users database:", e)
+
+def save_users():
+    try:
+        with open(DB_FILE, 'w', encoding='utf-8') as f:
+            json.dump(USER_DB, f, indent=4)
+    except Exception as e:
+        print("Error saving users database:", e)
+
+# Initial load
+load_users()
 
 
 @auth_bp.route('/api/auth/signup', methods=['POST'])
@@ -34,6 +59,7 @@ def signup():
         "name": name,
         "password": password
     }
+    save_users()
 
     return jsonify({
         "message": "Registration successful!",
@@ -99,3 +125,4 @@ def forgot_password():
 def logout():
     """Clear session simulation."""
     return jsonify({"message": "Logout successful!"}), 200
+

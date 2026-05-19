@@ -3,8 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LoanLens AI — AI Financial Intelligence Assistant</title>
-  <meta name="description" content="LoanLens AI decodes loan documents — detecting hidden traps, calculating real costs, and explaining legal jargon in plain language." />
+  <title>FinScan AI — AI Financial Intelligence Assistant</title>
+  <script>
+    // Theme Flash Prevention
+    (function() {
+      const theme = localStorage.getItem('ll_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <meta name="description" content="FinScan AI decodes loan documents — detecting hidden traps, calculating real costs, and explaining legal jargon in plain language." />
   <link rel="stylesheet" href="css/global.css" />
   <style>
     .hero {
@@ -84,7 +91,7 @@
 </head>
 <body>
 <nav class="navbar">
-  <div class="nav-brand"><div class="logo-icon">🔍</div>LoanLens AI</div>
+  <div class="nav-brand"><div class="logo-icon">🔍</div>FinScan AI</div>
   <div class="nav-links">
     <a href="index.html" class="active">Home</a>
     <a href="dashboard.html">Dashboard</a>
@@ -93,6 +100,7 @@
     <a href="chat.html">AI Chat</a>
   </div>
   <div style="display:flex; align-items:center; gap:16px;">
+    <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌙</button>
     <div id="google_translate_element"></div>
     <div id="navCtaArea">
     <button class="nav-cta" onclick="window.location.href='auth.html'">Portal Login</button>
@@ -106,15 +114,15 @@
     <div class="animate-fade-up">
       <div class="hero-tag"><span class="dot"></span> AI Financial Intelligence · GitHub Models</div>
       <h1 class="hero-title">
-        Your Loan Document<br>
+        Your Financial Document<br>
         <span class="grad-text">Decoded in Seconds.</span><br>
         Not Summaries —<br>
         <span class="grad-text-danger">Intelligence.</span>
       </h1>
-      <p class="hero-desc">LoanLens AI finds hidden traps, calculates the <em>real</em> cost, and explains every clause like a trusted friend — before you sign.</p>
+      <p class="hero-desc">FinScan AI finds hidden traps, calculates the <em>real</em> cost, and explains every clause like a trusted friend — before you sign.</p>
       <div class="hero-cta">
-        <button class="btn btn-primary" onclick="triggerUploadGuard()">🚀 Analyze My Loan</button>
-        <a href="dashboard.html?demo=1" class="btn btn-secondary">View Demo</a>
+        <button class="btn btn-primary" onclick="triggerUploadGuard()">🚀 Analyze My Document</button>
+        <a href="dashboard.html?demo=1" class="btn btn-secondary">Explore Demo</a>
       </div>
       <div class="hero-stats">
         <div class="hero-stat"><div class="num grad-text">12+</div><div class="lbl">AI Features</div></div>
@@ -125,8 +133,8 @@
 
     <div class="hero-upload animate-fade-up" style="animation-delay:.2s">
       <div class="upload-card">
-        <div class="upload-card-title">🔍 Analyze Your Loan</div>
-        <div class="upload-card-sub">PDF, scanned image, or bank agreement</div>
+        <div class="upload-card-title">🔍 Analyze Your Document</div>
+        <div class="upload-card-sub">PDF, scanned image, or agreement</div>
         <div class="upload-zone" id="dropZone">
           <div class="upload-icon">📄</div>
           <div class="upload-title">Drop your document here</div>
@@ -177,7 +185,7 @@
 <section class="how-section">
   <div class="section-top" style="padding:0 24px">
     <div class="section-label">Simple Process</div>
-    <h2>How <span class="grad-text">LoanLens AI</span> Works</h2>
+    <h2>How <span class="grad-text">FinScan AI</span> Works</h2>
   </div>
   <div class="steps">
     <div class="step"><div class="step-num">1</div><div class="step-title">Upload Document</div><div class="step-desc">PDF, scanned image, or bank agreement</div></div>
@@ -187,7 +195,7 @@
   </div>
 </section>
 
-<footer><div>LoanLens AI &mdash; Built with GitHub Models &bull; <span class="grad-text">Financial Intelligence, Simplified.</span></div></footer>
+<footer><div>FinScan AI &mdash; Built with GitHub Models &bull; <span class="grad-text">Financial Intelligence, Simplified.</span></div></footer>
 <div class="toast-container" id="toastBox"></div>
 
 <script>
@@ -276,6 +284,32 @@ function toast(msg, type='info') {
   t.className = `toast ${type}`; t.textContent = msg;
   c.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
+
+// Initialize Theme Switcher Icon
+function initThemeBtn() {
+  const currentTheme = localStorage.getItem('ll_theme') || 'dark';
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.textContent = currentTheme === 'light' ? '☀️' : '🌙';
+  }
+}
+
+function toggleTheme() {
+  const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', newTheme);
+  localStorage.setItem('ll_theme', newTheme);
+  
+  const btn = document.getElementById('themeToggleBtn');
+  if (btn) {
+    btn.textContent = newTheme === 'light' ? '☀️' : '🌙';
+  }
+  
+  window.dispatchEvent(new Event('themeChanged'));
+  toast(`☀️ Theme switched to ${newTheme} mode!`, 'success');
+}
+
+initThemeBtn();
 </script>
 
 <!-- Google Translate Script -->
@@ -292,4 +326,5 @@ function googleTranslateElementInit() {
 <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
+
 

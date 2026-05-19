@@ -1,5 +1,5 @@
-/* ============================================================
-   LoanLens AI — Global Design System
+﻿/* ============================================================
+   FinScan AI — Global Design System
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -469,7 +469,7 @@ body { top: 0 !important; }
 .goog-text-highlight { background: none !important; box-shadow: none !important; }
 
 /* ============================================================
-   LoanLens AI — Interactive Reader & Highlighting Styles
+   FinScan AI — Interactive Reader & Highlighting Styles
    ============================================================ */
 
 /* Document Reader Split Pane Layout */
@@ -688,4 +688,99 @@ body { top: 0 !important; }
   padding-top: 15px;
   margin-top: 40px;
 }
+
+/* ============================================================
+   FinScan AI — Premium Light Theme & Input Overrides
+   ============================================================ */
+[data-theme="light"] {
+  --bg-primary:     #F8FAFC;
+  --bg-secondary:   #F1F5F9;
+  --bg-card:        #FFFFFF;
+  --bg-card-hover:  #E2E8F0;
+  --bg-glass:       rgba(255, 255, 255, 0.85);
+
+  --text-primary:   #0F172A;
+  --text-secondary: #475569;
+  --text-muted:     #64748B;
+  --text-accent:    #2563EB;
+
+  --border:         rgba(15, 23, 42, 0.08);
+  --border-accent:  rgba(37, 99, 235, 0.2);
+  --border-glow:    rgba(37, 99, 235, 0.4);
+
+  --grad-hero:      linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 50%, #E2E8F0 100%);
+  --shadow-card:    0 10px 30px rgba(15, 23, 42, 0.05);
+  --shadow-blue:    0 0 20px rgba(37, 99, 235, 0.1);
+  --blue-glow:      rgba(37, 99, 235, 0.1);
+}
+
+[data-theme="light"] input, 
+[data-theme="light"] select, 
+[data-theme="light"] textarea {
+  color: #0F172A !important;
+  background-color: #FFFFFF !important;
+  border-color: rgba(15, 23, 42, 0.15) !important;
+}
+
+[data-theme="light"] input::placeholder {
+  color: #94A3B8 !important;
+}
+
+/* Specific component fixes for light mode */
+[data-theme="light"] .navbar {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .sidebar {
+  background: #F1F5F9 !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="light"] .card {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme="light"] .sidebar-item.active {
+  background: #FFFFFF !important;
+  border-color: var(--blue) !important;
+}
+
+[data-theme="light"] .month-box {
+  background: #FFFFFF !important;
+}
+
+[data-theme="light"] .stat-card {
+  background: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+[data-theme="light"] .trap-card {
+  background: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+/* Theme Toggle Button */
+.theme-toggle-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+.theme-toggle-btn:hover {
+  border-color: var(--blue);
+  background: var(--bg-card-hover);
+  transform: rotate(15deg) scale(1.05);
+  box-shadow: var(--shadow-blue);
+}
+
+
 
