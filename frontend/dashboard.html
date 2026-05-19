@@ -441,19 +441,19 @@
 
         <div class="cost-grid">
           <div class="stat-card">
-            <div class="stat-label">Principal Amount</div>
+            <div class="stat-label" id="labelPrincipal">Principal Amount</div>
             <div class="stat-value grad-text" id="costPrincipal">₹50,00,000</div>
           </div>
           <div class="stat-card danger">
-            <div class="stat-label">Total Repayment Amount</div>
+            <div class="stat-label" id="labelRepayment">Total Repayment Amount</div>
             <div class="stat-value grad-text" id="costTotalPayment">₹1,04,13,840</div>
           </div>
           <div class="stat-card danger">
-            <div class="stat-label">Total Extra Interest</div>
+            <div class="stat-label" id="labelInterest">Total Extra Interest</div>
             <div class="stat-value grad-text" id="costInterest">₹54,13,840</div>
           </div>
           <div class="stat-card amber">
-            <div class="stat-label">Interest % of Principal</div>
+            <div class="stat-label" id="labelPercentage">Interest % of Principal</div>
             <div class="stat-value grad-text" id="costPercentage">108.3%</div>
           </div>
         </div>
@@ -886,6 +886,59 @@
     });
 
     // Reality Cost Populate
+    const typeLower = (activeAnalysis.core_info.loan_type || "").toLowerCase();
+    
+    let label1 = "Principal Amount";
+    let label2 = "Total Repayment Amount";
+    let label3 = "Total Extra Interest";
+    let label4 = "Interest % of Principal";
+    
+    let col1 = "Year";
+    let col2 = "EMI Paid";
+    let col3 = "Interest Paid";
+    let col4 = "Principal Paid";
+    let col5 = "Remaining Balance";
+    
+    if (typeLower.includes("policy") || typeLower.includes("insurance") || typeLower.includes("pet")) {
+      label1 = "Sum Insured / Cover";
+      label2 = "Total Premium Outlay";
+      label3 = "Out-of-Pocket Co-pay Limit";
+      label4 = "Co-pay % of Cover";
+      
+      col1 = "Year";
+      col2 = "Annual Premium";
+      col3 = "Estimated Co-pay";
+      col4 = "Net Cover Value";
+      col5 = "Remaining Cover";
+    } else if (typeLower.includes("lease")) {
+      label1 = "Monthly Lease Rent";
+      label2 = "Total Contractual Rent";
+      label3 = "Security Deposit Held";
+      label4 = "Deposit % of Annual Rent";
+      
+      col1 = "Year";
+      col2 = "Total Rent Paid";
+      col3 = "Opportunity Cost";
+      col4 = "Repaint/Deduction Reserve";
+      col5 = "Remaining Deposit";
+    }
+    
+    document.getElementById('labelPrincipal').textContent = label1;
+    document.getElementById('labelRepayment').textContent = label2;
+    document.getElementById('labelInterest').textContent = label3;
+    document.getElementById('labelPercentage').textContent = label4;
+    
+    const tableHeader = document.querySelector('#amortizationTable thead tr');
+    if (tableHeader) {
+      tableHeader.innerHTML = `
+        <th>${col1}</th>
+        <th>${col2}</th>
+        <th>${col3}</th>
+        <th>${col4}</th>
+        <th>${col5}</th>
+      `;
+    }
+
     document.getElementById('shockStatement').textContent = activeAnalysis.reality_cost.shock_statement;
     document.getElementById('costPrincipal').textContent = "₹" + activeAnalysis.reality_cost.principal.toLocaleString('en-IN');
     document.getElementById('costTotalPayment').textContent = "₹" + activeAnalysis.reality_cost.total_payment.toLocaleString('en-IN');

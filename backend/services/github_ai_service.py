@@ -941,15 +941,22 @@ def get_mock_json_response(prompt: str) -> str:
         deposit = interest_rate_numeric if type(interest_rate_numeric) in [int, float] else 44000
         total_payment = monthly_rent * tenure_months + deposit
         total_interest = deposit
-        interest_percentage = 0
+        interest_percentage = int((deposit / max(1, monthly_rent * 12)) * 100)
         shock_statement = f"Your total contractual commitment for this {tenure} lease is {fmt_inr(total_payment)}, including a refundable deposit of {fmt_inr(deposit)}."
 
     elif category in ["Insurance", "Pet"]:
         premium = interest_rate_numeric if type(interest_rate_numeric) in [int, float] else 8500
         total_payment = premium
-        total_interest = 0
-        interest_percentage = 0
-        shock_statement = f"Your total annualized premium payment for this policy period is {fmt_inr(total_payment)}."
+        
+        # Estimate co-payment / out-of-pocket exposure from text
+        copay_pct = 20
+        copay_match = re.search(r'(?:co-payment|co-pay|share|proportion|depreciation|depreciate)\s*(?:ratio|of|rate|charges)?\s*(\d+)\s*%', doc_text, re.IGNORECASE)
+        if copay_match:
+            copay_pct = int(copay_match.group(1))
+            
+        total_interest = int(loan_amount_numeric * (copay_pct / 100))
+        interest_percentage = copay_pct
+        shock_statement = f"You will pay {fmt_inr(premium)} in premiums over {tenure_months} months, with an estimated {fmt_inr(total_interest)} out-of-pocket co-pay/depreciation exposure."
 
     # Dynamic yearly breakdown calculation
     yearly_breakdown = []
@@ -969,9 +976,9 @@ def get_mock_json_response(prompt: str) -> str:
             remaining_balance = max(0, remaining_balance - year_emi_paid)
         else: # Insurance / Pet
             year_emi_paid = total_payment
-            year_interest_paid = 0
-            year_principal_paid = total_payment
-            remaining_balance = 0
+            year_interest_paid = total_interest
+            year_principal_paid = loan_amount_numeric
+            remaining_balance = loan_amount_numeric
 
         yearly_breakdown.append({
             "year": year,
