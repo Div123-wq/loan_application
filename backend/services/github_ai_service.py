@@ -906,49 +906,112 @@ def get_mock_json_response(prompt: str) -> str:
         flag_reason = "Compounding late fees at 24% annually creates rapid debt traps."
         flag_orig = q2
 
-    # Dynamic Risk Score Calculator based on matched clauses
-    penalty_risk = 30
-    interest_stability = 30
-    fairness = 30
+    # ── Dynamic Risk Score Calculator based on matched clauses ──────────────
+    # Start from a meaningful baseline per category so even clean documents
+    # reflect their inherent risk class.
+    if category == "Loan":
+        penalty_risk = 30
+        interest_stability = 30
+        fairness = 30
+    elif category == "Insurance":
+        penalty_risk = 35   # insurance inherently has co-pay / exclusion risk
+        interest_stability = 35
+        fairness = 30
+    elif category == "Lease":
+        penalty_risk = 30
+        interest_stability = 25
+        fairness = 40       # landlord/tenant power imbalance baseline
+    else:  # Pet
+        penalty_risk = 30
+        interest_stability = 30
+        fairness = 30
 
     doc_text_lower = doc_text.lower()
-    
-    # 1. Penalty Risk
-    if any(kw in doc_text_lower for kw in ["foreclosure", "prepayment", "pre-pay", "exit charge"]):
+
+    # ── 1. Penalty / Hidden-Cost Risk ─────────────────────────────────────
+    # Loan signals
+    if any(kw in doc_text_lower for kw in ["foreclosure", "prepayment", "pre-pay", "exit charge", "pre-closure"]):
         penalty_risk += 25
-    if any(kw in doc_text_lower for kw in ["compound", "late fee", "arrears", "penal"]):
+    if any(kw in doc_text_lower for kw in ["compound", "late fee", "arrears", "penal interest", "default interest"]):
         penalty_risk += 25
-    if any(kw in doc_text_lower for kw in ["co-payment", "co-pay", "mandatory co-payment"]):
+    if any(kw in doc_text_lower for kw in ["processing fee", "administrative levy", "admin charge", "legal vetting"]):
+        penalty_risk += 10
+    # Insurance signals
+    if any(kw in doc_text_lower for kw in ["co-payment", "co-pay", "mandatory co-payment", "copay"]):
+        penalty_risk += 22
+    if any(kw in doc_text_lower for kw in ["room rent", "sub-limit", "room sub-limit", "daily limit"]):
+        penalty_risk += 18
+    if any(kw in doc_text_lower for kw in ["depreciation", "50%", "parts depreciation", "wear depreciation"]):
         penalty_risk += 20
-    if any(kw in doc_text_lower for kw in ["room rent", "sub-limit", "cap"]):
+    if any(kw in doc_text_lower for kw in ["compulsory deductible", "deductible excess", "voluntary excess", "excess per claim"]):
+        penalty_risk += 20
+    if any(kw in doc_text_lower for kw in ["surrender charge", "surrender value", "early surrender", "surrender penalty"]):
+        penalty_risk += 18
+    if any(kw in doc_text_lower for kw in ["non-network", "non network", "restricted garage", "network garage"]):
+        penalty_risk += 12
+    if any(kw in doc_text_lower for kw in ["exclusion", "excluded", "not covered", "no coverage", "strictly excluded"]):
+        penalty_risk += 15
+    # Lease signals
+    if any(kw in doc_text_lower for kw in ["security deposit deduction", "uncapped deduction", "wear-and-tear deduction"]):
+        penalty_risk += 20
+    if any(kw in doc_text_lower for kw in ["maintenance charge", "painting", "repainting", "repair deduct"]):
         penalty_risk += 15
 
-    # 2. Interest / Premium Stability Risk
-    if any(kw in doc_text_lower for kw in ["floating", "unilateral", "sole discretion", "revise", "mclr"]):
+    # ── 2. Rate / Premium Stability Risk ──────────────────────────────────
+    # Loan signals
+    if any(kw in doc_text_lower for kw in ["floating", "unilateral", "sole discretion", "revise", "mclr", "benchmark"]):
         interest_stability += 35
-    if any(kw in doc_text_lower for kw in ["escalate", "hike", "12%"]):
-        interest_stability += 25
-    if any(kw in doc_text_lower for kw in ["waiting period", "congenital", "pre-existing"]):
+    if any(kw in doc_text_lower for kw in ["margin revision", "spread revision", "rate hike", "benchmark rate"]):
         interest_stability += 20
+    # Insurance signals
+    if any(kw in doc_text_lower for kw in ["waiting period", "pre-existing", "waiting period of", "36 months", "24 months"]):
+        interest_stability += 22
+    if any(kw in doc_text_lower for kw in ["congenital", "hereditary", "breed-specific", "genetic"]):
+        interest_stability += 18
+    if any(kw in doc_text_lower for kw in ["annual premium increase", "premium hike", "premium revision", "age-based premium", "renewal premium"]):
+        interest_stability += 20
+    if any(kw in doc_text_lower for kw in ["misrepresentation void", "void ab initio", "policy lapse", "lapse clause"]):
+        interest_stability += 15
+    # Lease signals
+    if any(kw in doc_text_lower for kw in ["escalate", "rent escalation", "rent hike", "12%", "annual increase", "automatic increase"]):
+        interest_stability += 28
+    if any(kw in doc_text_lower for kw in ["landlord discretion", "landlord right", "lessor discretion"]):
+        interest_stability += 15
 
-    # 3. Fairness Risk
-    if any(kw in doc_text_lower for kw in ["terminate", "eviction", "7-day"]):
+    # ── 3. Fairness & Power-Balance Risk ──────────────────────────────────
+    # Lease signals
+    if any(kw in doc_text_lower for kw in ["terminate", "eviction", "7-day notice", "7 day notice", "immediate possession"]):
         fairness += 35
-    if any(kw in doc_text_lower for kw in ["deduct", "painting", "wear-and-tear"]):
+    if any(kw in doc_text_lower for kw in ["deduct", "painting", "wear-and-tear", "repaint", "standard cleaning"]):
         fairness += 25
-    if any(kw in doc_text_lower for kw in ["beneficiary", "payee", "sole beneficiary"]):
+    # Insurance / general signals
+    if any(kw in doc_text_lower for kw in ["sole beneficiary", "primary beneficiary", "lender as beneficiary", "payee bank"]):
+        fairness += 22
+    if any(kw in doc_text_lower for kw in ["misrepresentation", "material disclosure", "non-disclosure", "void the policy", "void contract"]):
+        fairness += 18
+    if any(kw in doc_text_lower for kw in ["unilateral termination", "at sole discretion", "without notice", "without prior notice"]):
         fairness += 20
-    if any(kw in doc_text_lower for kw in ["misrepresentation", "disclosure", "void"]):
+    # Loan signals
+    if any(kw in doc_text_lower for kw in ["covenant", "legal indemnity", "attorney charges", "all legal costs", "borrower bears"]):
         fairness += 15
+    if any(kw in doc_text_lower for kw in ["non-network", "network restriction", "cashless restricted"]):
+        fairness += 12
+
+    # ── Category-level score adjustments ──────────────────────────────────
+    # Documents with 3 Critical/High hidden traps are genuinely dangerous
+    critical_traps = sum(1 for t in hidden_traps if (t.get("severity", "") in ["Critical", "High"]))
+    penalty_risk   += critical_traps * 5
+    interest_stability += critical_traps * 3
+    fairness       += critical_traps * 3
 
     # Bounds check (max 95%, min 15%)
-    penalty_risk = min(95, max(15, penalty_risk))
+    penalty_risk       = min(95, max(15, penalty_risk))
     interest_stability = min(95, max(15, interest_stability))
-    fairness = min(95, max(15, fairness))
+    fairness           = min(95, max(15, fairness))
 
     # Overall calculation
     overall_score = int((penalty_risk + interest_stability + fairness) / 3)
-    
+
     if overall_score >= 70:
         overall_level = "High Risk"
         overall_color = "red"
@@ -958,6 +1021,7 @@ def get_mock_json_response(prompt: str) -> str:
     else:
         overall_level = "Low Risk"
         overall_color = "green"
+
 
     # ── Dynamic Category-specific Cost Calculator ────────────────────────────
     total_interest = 0
@@ -1100,7 +1164,11 @@ def get_mock_json_response(prompt: str) -> str:
             "confidence": 85,
             "reason": flag_reason,
             "original_text": flag_orig,
-            "industry_standard": "All key rates, fees and penalties must be flat, transparent and capped.",
+            "industry_standard": (
+              "Insurance policies should cap co-payments at 10% or below and avoid room rent sub-limits." if category in ["Insurance", "Pet"]
+              else "Lease agreements should cap rent escalations at 5-7% and require at least 30-day notice." if category == "Lease"
+              else "All key rates, fees and penalties must be flat, transparent and capped."
+            ),
             "severity": "High Concern" if avg_trust < 60 else "Medium Concern"
           }
         ]
@@ -1108,16 +1176,36 @@ def get_mock_json_response(prompt: str) -> str:
       "reality_cost": {
         "shock_statement": shock_statement,
         "principal": loan_amount_numeric,
+        "emi_amount": emi_numeric,
         "total_interest": total_interest,
         "total_payment": total_payment,
         "interest_percentage": interest_percentage,
         "yearly_breakdown": yearly_breakdown
       },
       "trust_score": {
-        "transparency_score": transparency_score, "transparency_note": "Core cost items are stated but dynamic penalty margins are vague." if transparency_score < 75 else "Core cost items and primary schedules are clearly structured.",
-        "fairness_score": fairness_score, "fairness_note": "Unilateral adjustment privileges heavily favor the lender's interest margins." if fairness_score < 70 else "The agreement balances interests reasonably well.",
-        "complexity_score": complexity_score, "complexity_note": "Standard legal phrasing requires active review." if complexity_score < 60 else "The phrasing uses standard simple plain-English.",
-        "trust_grade": trust_grade, "trust_grade_label": trust_grade_label,
+        "transparency_score": transparency_score,
+        "transparency_note": (
+          "Co-pay percentages and exclusion clauses are buried in fine print, making cost estimation difficult." if category in ["Insurance", "Pet"] and transparency_score < 75
+          else "Rent escalation and deposit deduction rules lack clear caps and are loosely defined." if category == "Lease" and transparency_score < 75
+          else "Core cost items are stated but dynamic penalty margins are vague." if transparency_score < 75
+          else "Core cost items and primary schedules are clearly structured."
+        ),
+        "fairness_score": fairness_score,
+        "fairness_note": (
+          "Exclusion clauses and waiting periods place heavy burden on the policyholder." if category in ["Insurance", "Pet"] and fairness_score < 70
+          else "Landlord holds unilateral eviction and deposit deduction rights over tenant." if category == "Lease" and fairness_score < 70
+          else "Unilateral adjustment privileges heavily favor the lender's interest margins." if fairness_score < 70
+          else "The agreement balances interests reasonably well."
+        ),
+        "complexity_score": complexity_score,
+        "complexity_note": (
+          "Insurance exclusion terminology requires specialized knowledge to interpret correctly." if category in ["Insurance", "Pet"] and complexity_score < 60
+          else "Lease clauses use dense legal language around termination and deposit rights." if category == "Lease" and complexity_score < 60
+          else "Standard legal phrasing requires active review." if complexity_score < 60
+          else "The phrasing uses standard simple plain-English."
+        ),
+        "trust_grade": trust_grade,
+        "trust_grade_label": trust_grade_label,
         "trust_summary": trust_summary
       }
     })
