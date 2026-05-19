@@ -861,6 +861,59 @@ def get_mock_json_response(prompt: str) -> str:
         flag_reason = "Compounding late fees at 24% annually creates rapid debt traps."
         flag_orig = q2
 
+    # Dynamic Risk Score Calculator based on matched clauses
+    penalty_risk = 30
+    interest_stability = 30
+    fairness = 30
+
+    doc_text_lower = doc_text.lower()
+    
+    # 1. Penalty Risk
+    if any(kw in doc_text_lower for kw in ["foreclosure", "prepayment", "pre-pay", "exit charge"]):
+        penalty_risk += 25
+    if any(kw in doc_text_lower for kw in ["compound", "late fee", "arrears", "penal"]):
+        penalty_risk += 25
+    if any(kw in doc_text_lower for kw in ["co-payment", "co-pay", "mandatory co-payment"]):
+        penalty_risk += 20
+    if any(kw in doc_text_lower for kw in ["room rent", "sub-limit", "cap"]):
+        penalty_risk += 15
+
+    # 2. Interest / Premium Stability Risk
+    if any(kw in doc_text_lower for kw in ["floating", "unilateral", "sole discretion", "revise", "mclr"]):
+        interest_stability += 35
+    if any(kw in doc_text_lower for kw in ["escalate", "hike", "12%"]):
+        interest_stability += 25
+    if any(kw in doc_text_lower for kw in ["waiting period", "congenital", "pre-existing"]):
+        interest_stability += 20
+
+    # 3. Fairness Risk
+    if any(kw in doc_text_lower for kw in ["terminate", "eviction", "7-day"]):
+        fairness += 35
+    if any(kw in doc_text_lower for kw in ["deduct", "painting", "wear-and-tear"]):
+        fairness += 25
+    if any(kw in doc_text_lower for kw in ["beneficiary", "payee", "sole beneficiary"]):
+        fairness += 20
+    if any(kw in doc_text_lower for kw in ["misrepresentation", "disclosure", "void"]):
+        fairness += 15
+
+    # Bounds check (max 95%, min 15%)
+    penalty_risk = min(95, max(15, penalty_risk))
+    interest_stability = min(95, max(15, interest_stability))
+    fairness = min(95, max(15, fairness))
+
+    # Overall calculation
+    overall_score = int((penalty_risk + interest_stability + fairness) / 3)
+    
+    if overall_score >= 70:
+        overall_level = "High Risk"
+        overall_color = "red"
+    elif overall_score >= 45:
+        overall_level = "Medium Risk"
+        overall_color = "amber"
+    else:
+        overall_level = "Low Risk"
+        overall_color = "green"
+
     return json.dumps({
       "core_info": {
         "loan_type": category + (" Policy" if category in ["Pet", "Insurance"] else " Agreement"),
@@ -883,11 +936,15 @@ def get_mock_json_response(prompt: str) -> str:
       "hidden_traps": hidden_traps,
       "friendly_explanations": friendly_explanations,
       "risk_score": {
-        "overall_score": 60 if category == "Loan" else 65 if category == "Lease" else 55,
-        "overall_level": "Medium Risk" if category != "Lease" else "High Risk",
-        "overall_color": "amber" if category != "Lease" else "orange",
+        "overall_score": overall_score,
+        "overall_level": overall_level,
+        "overall_color": overall_color,
         "sub_scores": {
-          "penalty_risk": 80, "interest_stability": 40, "transparency": 75, "fairness": 70, "legal_complexity": 50
+          "penalty_risk": penalty_risk,
+          "interest_stability": interest_stability,
+          "transparency": 75,
+          "fairness": fairness,
+          "legal_complexity": 50
         },
         "verdict": verdict,
         "top_risk_factor": top_risk
