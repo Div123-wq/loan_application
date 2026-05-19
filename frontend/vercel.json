@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:match*",
+      "destination": "https://backend-vert-six.vercel.app/api/:match*"
+    }
+  ]
+}
