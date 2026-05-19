@@ -138,11 +138,16 @@ def get_mock_json_response(prompt: str) -> str:
     # ── Step 3: Local Parameter Extractor ────────────────────────────
     lender_name = "State Bank of India"
     document_date = "18 May 2026"
+    borrower_name = "Rohan Sharma"
 
     # Try to find date
     date_match = re.search(r'(?:date|dated|on this|entered into on)\s*([A-Za-z0-9 \.,]{6,25})', doc_text, re.IGNORECASE)
     if date_match:
         document_date = date_match.group(1).strip()
+    else:
+        date_match2 = re.search(r'(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4})', doc_text)
+        if date_match2:
+            document_date = date_match2.group(1)
 
     # Universal currency amount helper — matches BOTH ₹X,XX,XXX AND X,XX,XXX INR
     def extract_amount(label_pattern, text):
@@ -156,9 +161,18 @@ def get_mock_json_response(prompt: str) -> str:
             return (m.group(1) or m.group(2)).replace(',', '')
         return None
 
+    # Universal large amount fallback if no label matched
+    def extract_large_amount_fallback(text):
+        m = re.findall(r'(?:₹|Rs\.?|INR)\s*([\d,]{5,10})|([\d,]{5,10})\s*(?:INR|Rs\.?)', text, re.IGNORECASE)
+        for group1, group2 in m:
+            val = (group1 or group2).replace(',', '')
+            if val.isdigit() and int(val) >= 10000:
+                return val
+        return None
+
     def fmt_inr(n):
         """Format integer as Indian-style currency string: ₹5,00,000"""
-        n = int(n)
+        n = int(float(n))
         s = str(n)
         if len(s) <= 3:
             return f'\u20b9{s}'
@@ -173,9 +187,22 @@ def get_mock_json_response(prompt: str) -> str:
         groups.reverse()
         return '\u20b9' + ','.join(groups) + ',' + last3
 
+    # Dynamic universal name extraction
+    l_match = re.search(r'(?:lender|bank|financial institution|lessor|landlord|insurer|provider|company)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,]{3,50})', doc_text, re.IGNORECASE)
+    if l_match:
+        lender_name = l_match.group(1).split('\n')[0].strip()
+    else:
+        bank_match = re.search(r'([A-Za-z0-9 \.\-]+?\b(?:Bank|Lender|Cooperative|Financier|Funding|Credit|Finance|Insurance|Assurance|Health|Mutual|Protection|Realty|Realtors|Group|Estates|Landlord)\b)', doc_text, re.IGNORECASE)
+        if bank_match:
+            lender_name = bank_match.group(1).strip()
+
+    b_match = re.search(r'(?:borrower|applicant|customer|tenant|lessee|policyholder|insured|beneficiary)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z ]{3,40})', doc_text, re.IGNORECASE)
+    if b_match:
+        borrower_name = b_match.group(1).split('\n')[0].strip()
+
     if category == "Pet":
-        lender_name = "PetGuard Premium Assurance"
-        borrower_name = "Rohan Sharma"
+        if lender_name == "State Bank of India":
+            lender_name = "PetGuard Premium Assurance"
         loan_amount = "₹10,00,000"
         loan_amount_numeric = 1000000
         interest_rate = "₹1,250 / mo"
@@ -187,59 +214,41 @@ def get_mock_json_response(prompt: str) -> str:
         emi_numeric = 1250
         processing_fee = "₹500 Co-registration Fee"
 
-        ag_match = re.search(r'(?:insurer|agency|provider|between):\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
-        if ag_match:
-            lender_name = ag_match.group(1).split('\n')[0].strip()
-        own_match = re.search(r'(?:owner|adopter|borrower|tenant):\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
-        if own_match:
-            borrower_name = own_match.group(1).split('\n')[0].strip()
         cov_raw = extract_amount(r'(?:coverage|coverage limit|sum|amount|limit)', doc_text)
+        if not cov_raw:
+            cov_raw = extract_large_amount_fallback(doc_text)
         if cov_raw:
             loan_amount = fmt_inr(cov_raw)
-            loan_amount_numeric = int(cov_raw)
+            loan_amount_numeric = int(float(cov_raw))
         pr_raw = extract_amount(r'(?:premium|monthly fee|fee)', doc_text)
         if pr_raw:
             val = int(float(pr_raw))
-            interest_rate = fmt_inr(val) + ' / mo'
+            interest_rate = fmt_inr(val) + " / mo"
             interest_rate_numeric = val
             emi_amount = fmt_inr(val)
             emi_numeric = val
 
     elif category == "Insurance":
-        lender_name = "StarCare General Insurance"
-        borrower_name = "Rohan Sharma"
-        loan_amount = "\u20b925,00,000"
-        loan_amount_numeric = 2500000
-        interest_rate = "\u20b91,850 / mo"
-        interest_rate_numeric = 1850
-        interest_type = "Standard Copay Plan"
-        tenure = "1 Year (Renewable)"
+        if lender_name == "State Bank of India":
+            lender_name = "StarCare Health Insurance"
+        loan_amount = "₹5,00,000"
+        loan_amount_numeric = 500000
+        interest_rate = "₹8,500 / yr"
+        interest_rate_numeric = 8500
+        interest_type = "Insurance Policy"
+        tenure = "Annual Cover"
         tenure_months = 12
-        emi_amount = "\u20b91,850"
-        emi_numeric = 1850
-        processing_fee = "\u20b91,000 Administration Fee"
+        emi_amount = "₹708 / mo"
+        emi_numeric = 708
+        processing_fee = "₹1,000 Administration Fee"
 
-        # Insurer name — prefer explicit label, else scan for company name
-        ins_match = re.search(r'(?:insurer|provider|company|agency)\s*[:\-]\s*([A-Za-z0-9 \.\-]+)', doc_text, re.IGNORECASE)
-        if ins_match:
-            lender_name = ins_match.group(1).split('\n')[0].strip()
-        else:
-            ins_match2 = re.search(r'([A-Za-z0-9 \.\-]+?\b(?:Insurance|Assurance|Health|Insurer|Mutual|Protection)\b)', doc_text, re.IGNORECASE)
-            if ins_match2:
-                lender_name = ins_match2.group(1).strip()
-
-        # Policyholder name
-        insd_match = re.search(r'(?:policyholder|insured|beneficiary|holder|name)\s*[:\-]\s*([A-Za-z][A-Za-z ]{2,40})', doc_text, re.IGNORECASE)
-        if insd_match:
-            borrower_name = insd_match.group(1).split('\n')[0].strip()
-
-        # Sum insured / coverage — BOTH ₹X and X INR
         si_raw = extract_amount(r'(?:sum insured|sum assured|coverage|insured amount|policy amount|cover amount|total cover)', doc_text)
+        if not si_raw:
+            si_raw = extract_large_amount_fallback(doc_text)
         if si_raw:
             loan_amount = fmt_inr(si_raw)
-            loan_amount_numeric = int(si_raw)
+            loan_amount_numeric = int(float(si_raw))
 
-        # Premium — BOTH formats; if value > 5000 treat as annual, else monthly
         pr_raw = extract_amount(r'(?:annual premium|yearly premium|premium amount|premium|amount due|amount payable)', doc_text)
         if pr_raw:
             val = int(float(pr_raw))
@@ -255,25 +264,19 @@ def get_mock_json_response(prompt: str) -> str:
                 emi_numeric = val
 
     elif category == "Lease":
-        lender_name = "Apex Realty Group"
-        borrower_name = "Rohan Sharma"
-        loan_amount = "\u20b922,000 / mo"
+        if lender_name == "State Bank of India":
+            lender_name = "Apex Realty Group"
+        loan_amount = "₹22,000 / mo"
         loan_amount_numeric = 22000
-        interest_rate = "\u20b944,000 Deposit"
+        interest_rate = "₹44,000 Deposit"
         interest_rate_numeric = 44000
         interest_type = "Fixed Rental Schedule"
         tenure = "11 Months"
         tenure_months = 11
-        emi_amount = "\u20b922,000"
+        emi_amount = "₹22,000"
         emi_numeric = 22000
-        processing_fee = "\u20b92,500 Registration charges"
+        processing_fee = "₹2,500 Registration charges"
 
-        ld_match = re.search(r'(?:landlord|lessor|owner)\s*[:\-]\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
-        if ld_match:
-            lender_name = ld_match.group(1).split('\n')[0].strip()
-        tn_match = re.search(r'(?:tenant|lessee)\s*[:\-]\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
-        if tn_match:
-            borrower_name = tn_match.group(1).split('\n')[0].strip()
         r_raw = extract_amount(r'(?:monthly rent|rent amount|rent)', doc_text)
         if r_raw:
             val = int(float(r_raw))
@@ -287,29 +290,23 @@ def get_mock_json_response(prompt: str) -> str:
             interest_rate_numeric = float(dp_raw)
 
     else:  # Loan
-        lender_name = "State Bank of India"
-        borrower_name = "Rohan Sharma"
-        loan_amount = "\u20b950,00,000"
+        loan_amount = "₹50,00,000"
         loan_amount_numeric = 5000000
         interest_rate = "8.5% p.a."
         interest_rate_numeric = 8.5
         interest_type = "Floating"
         tenure = "20 Years"
         tenure_months = 240
-        emi_amount = "\u20b943,391"
+        emi_amount = "₹43,391"
         emi_numeric = 43391
-        processing_fee = "\u20b910,000"
+        processing_fee = "₹10,000"
 
-        l_match = re.search(r'(?:lender|bank|financial institution)\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,]{3,50})', doc_text, re.IGNORECASE)
-        if l_match:
-            lender_name = l_match.group(1).split('\n')[0].strip()
-        b_match = re.search(r'(?:borrower|applicant|customer)\s*[:\-]?\s*([A-Za-z][A-Za-z ]{3,40})', doc_text, re.IGNORECASE)
-        if b_match:
-            borrower_name = b_match.group(1).split('\n')[0].strip()
         pa_raw = extract_amount(r'(?:loan amount|principal amount|principal|sanctioned amount)', doc_text)
+        if not pa_raw:
+            pa_raw = extract_large_amount_fallback(doc_text)
         if pa_raw:
             loan_amount = fmt_inr(pa_raw)
-            loan_amount_numeric = int(pa_raw)
+            loan_amount_numeric = int(float(pa_raw))
         rt_match = re.search(r'(?:interest rate|rate of interest|rate)\s*[:\-]?\s*([\d\.]+)\s*%', doc_text, re.IGNORECASE)
         if rt_match:
             interest_rate = rt_match.group(1) + '% p.a.'
@@ -321,12 +318,19 @@ def get_mock_json_response(prompt: str) -> str:
 
     # Helper: pull a verbatim sentence from doc containing all keywords
     def find_verbatim_quote(keywords, default_quote):
-        sentences = re.split(r'[\.\n]+', doc_text)
+        sentences = re.split(r'[\.\n\r]+', doc_text)
         for s in sentences:
             s_clean = s.strip()
-            if 20 < len(s_clean) < 200:
+            if 15 < len(s_clean) < 300:
                 s_lower = s_clean.lower()
                 if all(kw in s_lower for kw in keywords):
+                    return s_clean
+        # Secondary soft-matching pass
+        for s in sentences:
+            s_clean = s.strip()
+            if 20 < len(s_clean) < 300:
+                s_lower = s_clean.lower()
+                if any(kw in s_lower for kw in keywords) and any(modal in s_lower for modal in ["shall", "must", "will", "agrees", "reserves", "charge", "fee", "penalty"]):
                     return s_clean
         return default_quote
 
