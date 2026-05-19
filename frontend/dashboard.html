@@ -1399,6 +1399,7 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       const activeSec = document.getElementById('section-' + secId);
       if(activeSec) {
         activeSec.style.display = 'block';
+        if (secId === 'reader') initializeSmartReader();
       }
     }
 
