@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://backend-vert-six.vercel.app/api/:match*"
+      "destination": "https://backend-div123-wqs-projects.vercel.app/api/:match*"
     }
   ]
 }
