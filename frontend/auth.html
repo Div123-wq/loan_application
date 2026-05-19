@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -11,6 +11,7 @@
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <link rel="stylesheet" href="css/global.css">
   <style>
     .auth-wrapper {
@@ -144,6 +145,30 @@
         </div>
 
         <button type="submit" class="btn btn-primary" style="margin-top: 8px; width: 100%;">Sign In 🚀</button>
+        
+        <div style="display: flex; align-items: center; text-align: center; margin: 12px 0;">
+          <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
+          <span style="padding: 0 10px; color: var(--text-muted); font-size: 0.8rem;">or</span>
+          <hr style="flex: 1; border: none; border-top: 1px solid var(--border);">
+        </div>
+        
+        <div id="g_id_onload"
+             data-client_id="YOUR_GOOGLE_CLIENT_ID"
+             data-context="signin"
+             data-ux_mode="popup"
+             data-callback="handleGoogleLogin"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-shape="rectangular"
+             data-theme="outline"
+             data-text="signin_with"
+             data-size="large"
+             data-logo_alignment="left"
+             style="display: flex; justify-content: center;">
+        </div>
+
         <p style="font-size: 0.75rem; text-align: center; color: var(--text-muted); margin-top: 8px;">
           💡 Try default login: <strong>demo@FinScan.ai</strong> / <strong>password123</strong>
         </p>
@@ -199,6 +224,27 @@
 
   <script>
     const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
+
+    async function handleGoogleLogin(response) {
+      try {
+        const res = await fetch(`${API}/api/auth/google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: response.credential })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Google login failed.");
+        
+        localStorage.setItem('ll_user', JSON.stringify(data.user));
+        toast(`✅ welcome, ${data.user.name}!`, 'success');
+        
+        setTimeout(() => {
+          window.location.href = 'dashboard.html';
+        }, 800);
+      } catch(e) {
+        toast("❌ " + e.message, 'error');
+      }
+    }
 
     function switchForm(mode) {
       // Reset active tabs

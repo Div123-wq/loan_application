@@ -290,6 +290,11 @@
       <button class="sidebar-item" onclick="window.location.href='chat.html'">
         <span class="icon">🤖</span> AI Friend Chat
       </button>
+      
+      <div class="sidebar-label" style="margin-top: 16px;">Account Settings</div>
+      <button class="sidebar-item" onclick="switchSection('profile')">
+        <span class="icon">👤</span> Update Profile
+      </button>
     </aside>
 
     <!-- Main Content Area -->
@@ -566,6 +571,30 @@
           </p>
         </div>
       </div>
+
+      <!-- 7. UPDATE PROFILE SECTION -->
+      <div id="section-profile" class="section-content animate-fade-in" style="display:none;">
+        <div class="section-header" style="margin-bottom: 20px; align-items: flex-start;">
+          <div>
+            <h3 class="card-title">👤 Update Your Profile</h3>
+            <p style="font-size: 0.9rem; margin-top: 4px;">Keep your account details up to date.</p>
+          </div>
+        </div>
+        
+        <div class="card" style="max-width: 500px;">
+          <form id="profileForm" onsubmit="updateProfile(event)" style="display: flex; flex-direction: column; gap: 16px;">
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">Full Name</label>
+              <input type="text" id="profName" style="background: var(--bg-secondary); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px;" placeholder="New Name">
+            </div>
+            <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary);">New Password</label>
+              <input type="password" id="profPassword" style="background: var(--bg-secondary); border: 1px solid var(--border); color: white; padding: 12px; border-radius: 6px;" placeholder="Leave blank to keep current">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-top: 8px;">Save Changes 💾</button>
+          </form>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -731,6 +760,59 @@
     function logout() {
       localStorage.removeItem('ll_user');
       window.location.href = 'index.html';
+    }
+
+    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
+
+    function toast(msg, type='info') {
+      const c = document.getElementById('toastBox');
+      if (!c) return;
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      c.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    async function updateProfile(event) {
+      event.preventDefault();
+      if (!user) return;
+      
+      const btn = event.target.querySelector('button');
+      btn.innerHTML = 'Saving... ⏳';
+      btn.disabled = true;
+
+      const body = {
+        email: user.email,
+        name: document.getElementById('profName').value,
+        password: document.getElementById('profPassword').value
+      };
+
+      try {
+        const res = await fetch(`${API}/api/auth/profile`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || "Update failed.");
+        
+        localStorage.setItem('ll_user', JSON.stringify(data.user));
+        toast('✅ Profile updated successfully!', 'success');
+        
+        Object.assign(user, data.user);
+        document.getElementById('navCtaArea').innerHTML = `
+          <span style="font-size:0.85rem; font-weight:700; color:var(--text-secondary); margin-right:12px;">👤 Hi, ${user.name}</span>
+          <button class="nav-cta" style="background:var(--red-glow); color:var(--red); border-color:transparent;" onclick="logout()">Logout</button>
+        `;
+        document.getElementById('profPassword').value = '';
+      } catch (err) {
+        toast('❌ ' + err.message, 'error');
+      } finally {
+        btn.innerHTML = 'Save Changes 💾';
+        btn.disabled = false;
+      }
     }
 
     function safeFormat(val) {

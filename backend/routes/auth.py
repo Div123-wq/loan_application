@@ -1,5 +1,7 @@
-﻿import uuid
+import uuid
 from flask import Blueprint, request, jsonify
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -21,7 +23,7 @@ def load_users():
     global USER_DB
     if os.path.exists(DB_FILE):
         try:
-            with open(DB_FILE, 'r', encoding='utf-8') as f:
+            with open(DB_FILE, 'r', encoding='utf-8-sig') as f:
                 data = json.load(f)
                 if isinstance(data, dict):
                     USER_DB.update(data)
@@ -126,3 +128,77 @@ def logout():
     """Clear session simulation."""
     return jsonify({"message": "Logout successful!"}), 200
 
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
+
+@auth_bp.route('/api/auth/google', methods=['POST'])
+def google_login():
+    """Verify Google token and login/register the user."""
+    data = request.get_json() or {}
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({"error": "No token provided."}), 400
+        
+    try:
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        
+        email = idinfo['email'].lower()
+        name = idinfo.get('name', 'Google User')
+        
+        if email not in USER_DB:
+            # Auto-register
+            user_id = "user_" + str(uuid.uuid4())[:8]
+            USER_DB[email] = {
+                "id": user_id,
+                "name": name,
+                "password": "" # No password for google accounts
+            }
+            save_users()
+            
+        user = USER_DB[email]
+        
+        return jsonify({
+            "message": "Google Login successful!",
+            "user": {
+                "id": user["id"],
+                "name": user["name"],
+                "email": email
+            }
+        }), 200
+        
+    except ValueError:
+        return jsonify({"error": "Invalid Google token."}), 401
+
+
+@auth_bp.route('/api/auth/profile', methods=['PUT'])
+def update_profile():
+    """Update user profile (name and password)."""
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+    new_name = data.get('name', '').strip()
+    new_password = data.get('password', '').strip()
+    
+    if not email:
+        return jsonify({"error": "Email is required to identify user."}), 400
+        
+    if email not in USER_DB:
+        return jsonify({"error": "User not found."}), 404
+        
+    user = USER_DB[email]
+    
+    if new_name:
+        user['name'] = new_name
+    if new_password:
+        user['password'] = new_password
+        
+    save_users()
+    
+    return jsonify({
+        "message": "Profile updated successfully!",
+        "user": {
+            "id": user["id"],
+            "name": user["name"],
+            "email": email
+        }
+    }), 200
