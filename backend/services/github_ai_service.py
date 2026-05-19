@@ -956,7 +956,7 @@ def get_mock_json_response(prompt: str) -> str:
     tenure_years = max(1, tenure_months // 12)
     remaining_balance = loan_amount_numeric if category == "Loan" else total_payment
 
-    for year in range(1, min(6, tenure_years + 1)):
+    for year in range(1, tenure_years + 1):
         if category == "Loan":
             year_emi_paid = emi_numeric * 12 if type(emi_numeric) in [int, float] else (total_payment // tenure_years)
             year_interest_paid = int((remaining_balance * (interest_percentage / 100)))
