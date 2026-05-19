@@ -99,197 +99,371 @@ def get_mock_chat_response(prompt: str) -> str:
 
 
 def get_mock_json_response(prompt: str) -> str:
-    """Fallback standard mock JSON for structured endpoints."""
+    """Intelligent dynamic mock JSON analyzer for fallback/demo mode.
+    Parses the actual prompt text, detects document type, extracts parameters,
+    and dynamically compiles high-fidelity reports for loans, leases, pets, and insurances.
+    """
+    import re
     p_lower = prompt.lower()
+
+    # ── Step 1: Extract actual document text ─────────────────────────
+    doc_text = ""
+    if "document text:" in p_lower:
+        parts = prompt.split("DOCUMENT TEXT:")
+        if len(parts) > 1:
+            doc_text = parts[1]
+            if "you must return a single json object" in doc_text.lower():
+                doc_text = re.split(r'(?i)you must return a single json object', doc_text)[0]
+            doc_text = doc_text.strip()
+    if not doc_text:
+        doc_text = prompt
+
+    doc_lower = doc_text.lower()
+
+    # ── Step 2: Detect Category ──────────────────────────────────────
+    # Avoid substring matches like "cat" matching "application" or "communication"
+    pet_words = [r"\bpet\b", r"\bdog\b", r"\bcat\b", r"\bveterinary\b", r"\banimal\b", r"\badoption\b", r"\bbreed\b"]
+    ins_words = [r"\bpolicy\b", r"\binsurance\b", r"\binsurer\b", r"\binsured\b", r"\bdeductible\b", r"\bpremium\b", r"\bcopay\b"]
+    lease_words = [r"\blease\b", r"\btenant\b", r"\blandlord\b", r"\brent\b", r"\bsecurity deposit\b", r"\bpremises\b", r"\blessor\b", r"\blessee\b"]
     
-    # Comparison Battle
+    if any(re.search(pat, doc_lower) for pat in pet_words):
+        category = "Pet"
+    elif any(re.search(pat, doc_lower) for pat in ins_words):
+        category = "Insurance"
+    elif any(re.search(pat, doc_lower) for pat in lease_words):
+        category = "Lease"
+    else:
+        category = "Loan"
+
+    # ── Step 3: Local Parameter Extractor ────────────────────────────
+    lender_name = "State Bank of India"
+    document_date = "18 May 2026"
+
+    # Try to find date
+    date_match = re.search(r'(?:date|dated|on this|entered into on)\s*([A-Za-z0-9 \.,]{6,25})', doc_text, re.IGNORECASE)
+    if date_match:
+        document_date = date_match.group(1).strip()
+
+    # Universal currency amount helper — matches BOTH ₹X,XX,XXX AND X,XX,XXX INR
+    def extract_amount(label_pattern, text):
+        """Returns digit string (no commas) or None if not found."""
+        m = re.search(
+            label_pattern +
+            r'[^\n]{0,80}?(?:(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)|([\d,]+(?:\.\d{1,2})?)\s*(?:INR|Rs\.?))',
+            text, re.IGNORECASE | re.DOTALL
+        )
+        if m:
+            return (m.group(1) or m.group(2)).replace(',', '')
+        return None
+
+    def fmt_inr(n):
+        """Format integer as Indian-style currency string: ₹5,00,000"""
+        n = int(n)
+        s = str(n)
+        if len(s) <= 3:
+            return f'\u20b9{s}'
+        last3 = s[-3:]
+        rest = s[:-3]
+        groups = []
+        while len(rest) > 2:
+            groups.append(rest[-2:])
+            rest = rest[:-2]
+        if rest:
+            groups.append(rest)
+        groups.reverse()
+        return '\u20b9' + ','.join(groups) + ',' + last3
+
+    if category == "Pet":
+        lender_name = "PetGuard Premium Assurance"
+        borrower_name = "Rohan Sharma"
+        loan_amount = "₹10,00,000"
+        loan_amount_numeric = 1000000
+        interest_rate = "₹1,250 / mo"
+        interest_rate_numeric = 1250
+        interest_type = "Fixed Premium"
+        tenure = "12 Months"
+        tenure_months = 12
+        emi_amount = "₹1,250"
+        emi_numeric = 1250
+        processing_fee = "₹500 Co-registration Fee"
+
+        ag_match = re.search(r'(?:insurer|agency|provider|between):\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
+        if ag_match:
+            lender_name = ag_match.group(1).split('\n')[0].strip()
+        own_match = re.search(r'(?:owner|adopter|borrower|tenant):\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
+        if own_match:
+            borrower_name = own_match.group(1).split('\n')[0].strip()
+        cov_raw = extract_amount(r'(?:coverage|coverage limit|sum|amount|limit)', doc_text)
+        if cov_raw:
+            loan_amount = fmt_inr(cov_raw)
+            loan_amount_numeric = int(cov_raw)
+        pr_raw = extract_amount(r'(?:premium|monthly fee|fee)', doc_text)
+        if pr_raw:
+            val = int(float(pr_raw))
+            interest_rate = fmt_inr(val) + ' / mo'
+            interest_rate_numeric = val
+            emi_amount = fmt_inr(val)
+            emi_numeric = val
+
+    elif category == "Insurance":
+        lender_name = "StarCare General Insurance"
+        borrower_name = "Rohan Sharma"
+        loan_amount = "\u20b925,00,000"
+        loan_amount_numeric = 2500000
+        interest_rate = "\u20b91,850 / mo"
+        interest_rate_numeric = 1850
+        interest_type = "Standard Copay Plan"
+        tenure = "1 Year (Renewable)"
+        tenure_months = 12
+        emi_amount = "\u20b91,850"
+        emi_numeric = 1850
+        processing_fee = "\u20b91,000 Administration Fee"
+
+        # Insurer name — prefer explicit label, else scan for company name
+        ins_match = re.search(r'(?:insurer|provider|company|agency)\s*[:\-]\s*([A-Za-z0-9 \.\-]+)', doc_text, re.IGNORECASE)
+        if ins_match:
+            lender_name = ins_match.group(1).split('\n')[0].strip()
+        else:
+            ins_match2 = re.search(r'([A-Za-z0-9 \.\-]+?\b(?:Insurance|Assurance|Health|Insurer|Mutual|Protection)\b)', doc_text, re.IGNORECASE)
+            if ins_match2:
+                lender_name = ins_match2.group(1).strip()
+
+        # Policyholder name
+        insd_match = re.search(r'(?:policyholder|insured|beneficiary|holder|name)\s*[:\-]\s*([A-Za-z][A-Za-z ]{2,40})', doc_text, re.IGNORECASE)
+        if insd_match:
+            borrower_name = insd_match.group(1).split('\n')[0].strip()
+
+        # Sum insured / coverage — BOTH ₹X and X INR
+        si_raw = extract_amount(r'(?:sum insured|sum assured|coverage|insured amount|policy amount|cover amount|total cover)', doc_text)
+        if si_raw:
+            loan_amount = fmt_inr(si_raw)
+            loan_amount_numeric = int(si_raw)
+
+        # Premium — BOTH formats; if value > 5000 treat as annual, else monthly
+        pr_raw = extract_amount(r'(?:annual premium|yearly premium|premium amount|premium|amount due|amount payable)', doc_text)
+        if pr_raw:
+            val = int(float(pr_raw))
+            if val > 5000:
+                interest_rate = fmt_inr(val) + ' / yr'
+                interest_rate_numeric = val
+                emi_amount = fmt_inr(val // 12) + ' / mo'
+                emi_numeric = val // 12
+            else:
+                interest_rate = fmt_inr(val) + ' / mo'
+                interest_rate_numeric = val
+                emi_amount = fmt_inr(val) + ' / mo'
+                emi_numeric = val
+
+    elif category == "Lease":
+        lender_name = "Apex Realty Group"
+        borrower_name = "Rohan Sharma"
+        loan_amount = "\u20b922,000 / mo"
+        loan_amount_numeric = 22000
+        interest_rate = "\u20b944,000 Deposit"
+        interest_rate_numeric = 44000
+        interest_type = "Fixed Rental Schedule"
+        tenure = "11 Months"
+        tenure_months = 11
+        emi_amount = "\u20b922,000"
+        emi_numeric = 22000
+        processing_fee = "\u20b92,500 Registration charges"
+
+        ld_match = re.search(r'(?:landlord|lessor|owner)\s*[:\-]\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
+        if ld_match:
+            lender_name = ld_match.group(1).split('\n')[0].strip()
+        tn_match = re.search(r'(?:tenant|lessee)\s*[:\-]\s*([A-Za-z0-9 \.,\-]+)', doc_text, re.IGNORECASE)
+        if tn_match:
+            borrower_name = tn_match.group(1).split('\n')[0].strip()
+        r_raw = extract_amount(r'(?:monthly rent|rent amount|rent)', doc_text)
+        if r_raw:
+            val = int(float(r_raw))
+            loan_amount = fmt_inr(val) + ' / mo'
+            loan_amount_numeric = val
+            emi_amount = fmt_inr(val)
+            emi_numeric = val
+        dp_raw = extract_amount(r'(?:security deposit|deposit)', doc_text)
+        if dp_raw:
+            interest_rate = fmt_inr(int(float(dp_raw))) + ' Deposit'
+            interest_rate_numeric = float(dp_raw)
+
+    else:  # Loan
+        lender_name = "State Bank of India"
+        borrower_name = "Rohan Sharma"
+        loan_amount = "\u20b950,00,000"
+        loan_amount_numeric = 5000000
+        interest_rate = "8.5% p.a."
+        interest_rate_numeric = 8.5
+        interest_type = "Floating"
+        tenure = "20 Years"
+        tenure_months = 240
+        emi_amount = "\u20b943,391"
+        emi_numeric = 43391
+        processing_fee = "\u20b910,000"
+
+        l_match = re.search(r'(?:lender|bank|financial institution)\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,]{3,50})', doc_text, re.IGNORECASE)
+        if l_match:
+            lender_name = l_match.group(1).split('\n')[0].strip()
+        b_match = re.search(r'(?:borrower|applicant|customer)\s*[:\-]?\s*([A-Za-z][A-Za-z ]{3,40})', doc_text, re.IGNORECASE)
+        if b_match:
+            borrower_name = b_match.group(1).split('\n')[0].strip()
+        pa_raw = extract_amount(r'(?:loan amount|principal amount|principal|sanctioned amount)', doc_text)
+        if pa_raw:
+            loan_amount = fmt_inr(pa_raw)
+            loan_amount_numeric = int(pa_raw)
+        rt_match = re.search(r'(?:interest rate|rate of interest|rate)\s*[:\-]?\s*([\d\.]+)\s*%', doc_text, re.IGNORECASE)
+        if rt_match:
+            interest_rate = rt_match.group(1) + '% p.a.'
+            interest_rate_numeric = float(rt_match.group(1))
+        emi_raw = extract_amount(r'(?:emi|monthly installment|monthly instalment|monthly payment)', doc_text)
+        if emi_raw:
+            emi_amount = f'\u20b9{int(float(emi_raw)):,}'
+            emi_numeric = int(float(emi_raw))
+
+    # Helper: pull a verbatim sentence from doc containing all keywords
+    def find_verbatim_quote(keywords, default_quote):
+        sentences = re.split(r'[\.\n]+', doc_text)
+        for s in sentences:
+            s_clean = s.strip()
+            if 20 < len(s_clean) < 200:
+                s_lower = s_clean.lower()
+                if all(kw in s_lower for kw in keywords):
+                    return s_clean
+        return default_quote
+
+    # ── Step 4: Handle Comparison Battle Route ───────────────────────
     if "compare" in p_lower or "winner_cheapest" in p_lower or "winner" in p_lower:
+        if category == "Pet":
+            winner = "PetGuard Premium Assurance"
+            insight1 = "₹3,500 lower annual deductible outlay"
+            insight2 = "Fewer exclusions (3 exclusions vs 5 exclusions in PetFirst)"
+        elif category == "Insurance":
+            winner = "StarCare General Insurance"
+            insight1 = "No room rent sub-limits"
+            insight2 = "Cheaper premium plan (₹1,850/mo vs ₹2,400/mo)"
+        elif category == "Lease":
+            winner = "Apex Realty Group"
+            insight1 = "Slightly cheaper rent than surrounding options"
+            insight2 = "Security deposit capped at 2 months' rent"
+        else:
+            winner = "SBI Home Loan"
+            insight1 = "₹50,000 cheaper overall upfront fees"
+            insight2 = "No exit prepayment charges after Year 3"
+
         return json.dumps({
           "winner_cheapest": {
             "doc_id": "mock_id_1",
-            "reason": "The primary agreement offers significantly lower upfront administrative levies and dynamic MCLR resets, making it the cheapest over a 5-year outlook."
+            "reason": f"This option represents the lowest overall financial cost of ₹{loan_amount_numeric:,.0f} and most lenient penalty resets."
           },
           "winner_safest": {
             "doc_id": "mock_id_2",
-            "reason": "The comparison offer features flat, transparent interest structures without uncapped foreclosure penalty clauses, ensuring safety."
+            "reason": "Alternative comparison plan contains fewer hidden traps and caps annual escalations securely."
           },
           "winner_overall": {
             "doc_id": "mock_id_1",
-            "reason": "The primary agreement presents the best balance of lower initial EMI rates and lenient terms, provided seasonal prepayments are utilized."
+            "reason": "Recommended overall based on superior cost-efficiency metrics and low risk profiles."
           },
           "comparison_table": [
-            {
-              "category": "Total Cost",
-              "winner": "SBI Home Loan",
-              "insight": "₹50,000 cheaper overall"
-            },
-            {
-              "category": "Risk Level",
-              "winner": "SBI Home Loan",
-              "insight": "Fewer critical hidden traps (3 traps vs 5 traps in HDFC)"
-            },
-            {
-              "category": "Interest Rate",
-              "winner": "HDFC Fixed Buffer",
-              "insight": "0.25% lower starting rate shields initial years"
-            },
-            {
-              "category": "Flexibility",
-              "winner": "SBI Home Loan",
-              "insight": "No foreclosure charges after Year 3"
-            }
+            { "category": "Base Cost", "winner": winner, "insight": insight1 },
+            { "category": "Risk Index", "winner": winner, "insight": insight2 }
           ],
           "radar_scores": {
-            "labels": ["Cost", "Risk", "Transparency", "Flexibility", "Terms"],
+            "labels": ["Cost Efficiency", "Exclusion Safety", "Transparency", "Flexibility", "Terms Ratio"],
             "datasets": [
-              {
-                "label": "SBI Home Loan",
-                "data": [85, 80, 75, 90, 80]
-              },
-              {
-                "label": "HDFC Home Loan",
-                "data": [80, 60, 70, 50, 70]
-              }
+              { "label": "This Document", "data": [85, 75, 80, 70, 75] },
+              { "label": "Market Competitor", "data": [70, 60, 75, 55, 65] }
             ]
           },
           "negotiation_tips": [
-            "Request the primary lender to match the competitor's 8.25% starting interest rates for the initial year.",
-            "Ask the competing lender to completely waive the 2% exit foreclosure penalty after Year 3."
+            "Request standard waiver of administrative fee processing charges.",
+            "Ask to cap the maximum annual escalations at 5%."
           ],
-          "final_verdict": "While the competitor is slightly cheaper initially, their high prepayment penalty of 2% is a hidden trap if you plan to refinance. The primary option stands out as the overall safer long-term choice."
+          "final_verdict": f"The analyzed {category} contract is superior to market alternatives because it maintains more reasonable default conditions and shields you from excessive initial expenses."
         })
 
-    # Negotiation structure
+    # ── Step 5: Handle Negotiation Script Route ──────────────────────
     if "negotiate" in p_lower or "negotiable_terms" in p_lower:
+        if category == "Pet":
+            term1, curr1, neg1 = "Pre-existing exclusion", "Full Exclusion", "Registered clearance waiver"
+            term2, curr2, neg2 = "Annual premium adjust", "Unilateral revisions", "Cap adjustments at 8% p.a."
+            script = "I noticed the policy includes unilateral premium increases. Can we cap the annual adjustment rate at 8% maximum?"
+        elif category == "Insurance":
+            term1, curr1, neg1 = "Specialist Co-payment", "20% co-pay ratio", "0% co-payment plan option"
+            term2, curr2, neg2 = "Room Rent Sub-limits", "1% Sum Insured cap", "No Room Rent caps plan"
+            script = "I would like to explore options with no co-payment for specialist hospitalizations. What premium adjustment is required for a 0% co-pay?"
+        elif category == "Lease":
+            term1, curr1, neg1 = "Wear-and-tear Deductions", "Uncapped paint/cleaning", "Normal wear-and-tear excluded"
+            term2, curr2, neg2 = "Eviction Notification", "7-day termination", "Standard 30-day notice"
+            script = "The 7-day termination notice is quite short. Could we revise this to a standard 30-day or 60-day notification period for safety?"
+        else:
+            term1, curr1, neg1 = "Administrative Levy", "INR 15,000 flat charges", "Complete waiver"
+            term2, curr2, neg2 = "Prepayment Penalty", "2% penalty exit fee", "Waiver of exit fees after Year 3"
+            script = "Could we completely waive the flat INR 15,000 administrative levy since I am already paying standard upfront processing fees?"
+
         return json.dumps({
           "negotiable_terms": [
-            {
-              "term": "Flat Administrative Levy",
-              "current": "INR 15,000",
-              "negotiable_to": "INR 0",
-              "success_probability": "High",
-              "how_to_ask": "Request a waiver as a high-credit borrower who is already paying standard upfront processing fees."
-            },
-            {
-              "term": "Foreclosure Penalty Exit Fee",
-              "current": "2% of principal outstanding",
-              "negotiable_to": "0% penalty after Year 3",
-              "success_probability": "Medium",
-              "how_to_ask": "Mention competitor banks do not charge exit penalties for loans foreclosed using your own savings."
-            }
+            { "term": term1, "current": curr1, "negotiable_to": neg1, "success_probability": "High", "how_to_ask": "Request a waiver as a high-value customer." },
+            { "term": term2, "current": curr2, "negotiable_to": neg2, "success_probability": "Medium", "how_to_ask": "Mention industry standards." }
           ],
-          "questions_for_bank": [
-            "Is the foreclosure penalty waivable after 3 years?",
-            "Can we cap the floating interest rate margin adjustment?"
-          ],
-          "best_time_to_negotiate": "Before signing — never after",
-          "leverage_points": [
-            "Your solid credit rating of 780 gives you strong leverage."
-          ],
-          "red_lines": [
-            "Do NOT accept variable rate without a margin cap clause."
-          ],
-          "negotiation_script": "I would love to move forward, but the 2% exit foreclosure penalty and INR 15,000 administrative charge deviate from standard offerings. Could we waive the exit fee after year 3?"
+          "questions_for_bank": [f"Is the {term1} negotiable?", f"Can we alter the {term2} clause?"],
+          "best_time_to_negotiate": "Before executing final signatures",
+          "leverage_points": ["Excellent baseline credit credentials and history."],
+          "red_lines": ["Unilateral termination options with under 15 days notice."],
+          "negotiation_script": script
         })
 
-    # Pressure / Cash Flow Stress Calculator
+    # ── Step 6: Handle Pressure / Amortization Stress Route ──────────
     if "pressure" in p_lower or "stress_level" in p_lower:
         salary = 120000.0
         expenses = 45000.0
         family_size = 3
-        obligations = "School fees in June, Rent"
-        
-        import re
-        sal_match = re.search(r"Monthly Salary: ₹([\d,]+)", prompt)
-        if sal_match:
-            salary = float(sal_match.group(1).replace(",", ""))
-            
-        exp_match = re.search(r"Monthly Expenses: ₹([\d,]+)", prompt)
-        if exp_match:
-            expenses = float(exp_match.group(1).replace(",", ""))
-            
-        fam_match = re.search(r"Family Size: (\d+)", prompt)
-        if fam_match:
-            family_size = int(fam_match.group(1))
+        obligations = "Standard outlays"
 
-        ob_match = re.search(r"Other Obligations: (.*)", prompt)
-        if ob_match:
-            obligations = ob_match.group(1).strip()
-            
+        sal_match = re.search(r"Monthly Salary: ₹([\d,]+)", prompt)
+        if sal_match: salary = float(sal_match.group(1).replace(",", ""))
+        exp_match = re.search(r"Monthly Expenses: ₹([\d,]+)", prompt)
+        if exp_match: expenses = float(exp_match.group(1).replace(",", ""))
+        fam_match = re.search(r"Family Size: (\d+)", prompt)
+        if fam_match: family_size = int(fam_match.group(1))
+
         monthly_surplus = salary - expenses
-        emi_to_income_ratio = round((21700.0 / salary * 100.0), 1) if salary > 0 else 30.0
-        
-        # Calculate dynamic stress index
-        net_margin = salary - expenses - 21700.0
+        emi_to_income_ratio = round((emi_numeric / salary * 100.0), 1) if salary > 0 else 30.0
+
+        # Dynamic stress scoring
+        net_margin = salary - expenses - emi_numeric
         if net_margin < 0:
             stress_score = min(98, 70 + int(abs(net_margin) / 1000.0) * 3)
         else:
-            stress_score = max(10, 70 - int(net_margin / 2000.0) * 2)
-            
-        stress_score += family_size * 4
-        stress_score = min(max(stress_score, 12), 99)
-        
-        if stress_score >= 80:
-            stress_level = "Critical Risk"
-        elif stress_score >= 60:
-            stress_level = "High Risk"
-        elif stress_score >= 40:
-            stress_level = "Medium Risk"
-        else:
-            stress_level = "Low Risk"
-            
-        # Detect obligated months
+            stress_score = max(10, 60 - int(net_margin / 2000.0) * 2)
+        stress_score = min(max(stress_score + family_size * 3, 10), 99)
+
+        stress_level = "Critical Risk" if stress_score >= 80 else "High Risk" if stress_score >= 60 else "Medium Risk" if stress_score >= 40 else "Low Risk"
+
         months_list = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-        highlighted_months = []
-        for m in months_list:
-            if m.lower() in obligations.lower():
-                highlighted_months.append(m)
-                
-        # Populate dynamic calendar
         monthly_calendar = []
         danger_months = []
         safe_months = []
         for m in months_list:
             m_lower = m.lower()
             m_stress = "Low"
-            m_note = "Normal spending"
-            
-            is_obligated = m in highlighted_months
-            
-            if is_obligated:
-                m_stress = "High"
-                m_note = f"Obligation trigger: {obligations}"
-                danger_months.append(m)
-            elif m_lower == "march":
+            m_note = "Normal baseline flow"
+
+            if m_lower == "march":
                 m_stress = "High" if stress_score > 50 else "Medium"
-                m_note = "Tax filing season"
-                if m_stress == "High":
-                    danger_months.append(m)
+                m_note = "Tax payments and audit outlays"
+                if m_stress == "High": danger_months.append(m)
             elif m_lower == "october":
                 m_stress = "High" if stress_score > 40 else "Medium"
-                m_note = "Festival preps & Diwali outlay"
-                if m_stress == "High":
-                    danger_months.append(m)
-            elif m_lower in ["may", "december"]:
-                m_stress = "Medium"
-                m_note = "Summer travel / Holiday season"
+                m_note = "Festivals and high seasonal spending"
+                if m_stress == "High": danger_months.append(m)
             else:
-                if stress_score > 75:
+                if stress_score > 70:
                     m_stress = "Medium"
-                    m_note = "Tight baseline surplus flow"
+                    m_note = "Tight baseline surplus"
                 else:
-                    m_stress = "Low"
-                    m_note = "Normal spending"
                     safe_months.append(m)
-                    
-            monthly_calendar.append({
-                "month": m,
-                "stress": m_stress,
-                "note": m_note
-            })
-                    
-        verdict = f"Your cash flow shows a surplus of ₹{monthly_surplus:,.0f} before EMI deductions. The dynamic debt commitment leads to a {stress_level.lower()} rating, meaning cash stress spikes seasonally during obligation periods."
-        
+
+            monthly_calendar.append({ "month": m, "stress": m_stress, "note": m_note })
+
         return json.dumps({
           "monthly_surplus": monthly_surplus,
           "emi_to_income_ratio": emi_to_income_ratio,
@@ -298,107 +472,33 @@ def get_mock_json_response(prompt: str) -> str:
           "monthly_calendar": monthly_calendar,
           "danger_months": danger_months,
           "safe_months": safe_months,
-          "lifestyle_impact": f"You should budget standard reserves to handle peak stress points. We advise trimming optional layout by {int(stress_score/3)}%.",
-          "breaking_point_months": max(2, int(monthly_surplus / 5000.0)) if monthly_surplus > 0 else 0,
-          "breaking_point_note": f"Without external backups, your cash pool supports about {max(2, int(monthly_surplus / 5000.0)) if monthly_surplus > 0 else 0} months of continuous stress before depleting.",
-          "recommendations": [
-            f"Establish standard dynamic reserves before seasonal payouts.",
-            "Renegotiate variable rate options to restrict sudden hikes."
-          ],
-          "verdict": verdict
+          "lifestyle_impact": f"Ensure your monthly dynamic cash flows absorb the ₹{emi_numeric:,.0f} commitment.",
+          "breaking_point_months": max(2, int(monthly_surplus / max(1, emi_numeric))),
+          "breaking_point_note": f"A savings pool covers about {max(2, int(monthly_surplus / max(1, emi_numeric)))} months of direct stress.",
+          "recommendations": ["Establish a 3-month cash reserve.", "Minimize high-interest credit card debt."],
+          "verdict": f"The monthly commitments require ₹{emi_numeric:,.0f}. Your cash surplus yields a {stress_level.lower()} rating overall."
         })
 
-    # What-If Simulator
+    # ── Step 7: Handle Simulator Route ───────────────────────────────
     if "simulate" in p_lower or "timeline_effects" in p_lower:
-        scenario = "What if I miss payments?"
-        import re
+        scenario = "What if payments are missed?"
         scen_match = re.search(r'borrower is asking: "(.*?)"', prompt)
-        if scen_match:
-            scenario = scen_match.group(1)
-            
+        if scen_match: scenario = scen_match.group(1)
+
         s_lower = scenario.lower()
-        
         if "miss" in s_lower or "late" in s_lower or "default" in s_lower or "delay" in s_lower:
-            penalty_amount = "₹4,340 (2% penal compound interest)"
-            extra_interest = "₹3,500"
-            total_extra_cost = "₹7,840"
-            credit_score_impact = "-50 to -80 points"
-            total_extra_payment = "₹15,000 over tenure"
-            recovery_timeline = "6-12 months"
-            bank_action_risk = "High"
-            severity_level = "High"
-            timeline_effects = [
-              {"month": 1, "event": "Late compound penalties applied", "cost": "₹4,340", "severity": "medium"},
-              {"month": 2, "event": "Arrears reported to credit bureaus", "cost": "₹0", "severity": "high"},
-              {"month": 3, "event": "Legal show-cause alert drafted", "cost": "₹15,000", "severity": "critical"}
-            ]
-            advice = [
-              "Request a payment grace period from your banking relationship manager.",
-              "Prepare a ₹20,000 buffer reserve to cover late compounded interests."
-            ]
-            plain_summary = "Missing your EMI payments triggers immediate penal compounding interests. Your credit score will experience substantial downgrades and bureaus are updated instantly."
-            
-        elif "prepay" in s_lower or "foreclose" in s_lower or "early" in s_lower or "close" in s_lower:
-            penalty_amount = "₹1,00,000 exit penalty (2% principal outstanding)"
-            extra_interest = "-₹12,45,000 interest saved!"
-            total_extra_cost = "₹1,00,000"
-            credit_score_impact = "+15 to +30 points (Clear of debt)"
-            total_extra_payment = "₹1,00,000 exit penalty"
-            recovery_timeline = "Immediate closure"
-            bank_action_risk = "Low"
-            severity_level = "Medium"
-            timeline_effects = [
-              {"month": 1, "event": "Foreclosure exit request submitted at bank branch", "cost": "₹1,00,000", "severity": "low"},
-              {"month": 2, "event": "Savings liquidation check cleared", "cost": "₹0", "severity": "medium"},
-              {"month": 3, "event": "Account closed & No Due Certificate (NOC) distributed", "cost": "₹0", "severity": "low"}
-            ]
-            advice = [
-              "Formally request the branch manager to waive the prepayment penalty fee.",
-              "Obtain a certified stamp signature on your original loan document NOC document."
-            ]
-            plain_summary = "Prepaying your loan saves massive cumulative interest payouts, though standard bank contracts levy a flat 2% exit foreclosure penalty on outstanding principal balances."
-            
-        elif "rate" in s_lower or "floating" in s_lower or "rise" in s_lower or "jump" in s_lower or "increase" in s_lower:
-            penalty_amount = "₹0"
-            extra_interest = "₹8,24,000 dynamic increase"
-            total_extra_cost = "₹8,24,000"
-            credit_score_impact = "0 points"
-            total_extra_payment = "₹4,500 extra per EMI"
-            recovery_timeline = "Duration of loan tenure"
-            bank_action_risk = "Medium"
-            severity_level = "High"
-            timeline_effects = [
-              {"month": 1, "event": "Dynamic MCLR rate index adjusted upwards by bank", "cost": "₹0", "severity": "medium"},
-              {"month": 2, "event": "Monthly EMI payment draft revised upwards", "cost": "₹4,500", "severity": "medium"},
-              {"month": 3, "event": "Total loan tenure dynamically extended by 18 months", "cost": "₹8,24,000", "severity": "high"}
-            ]
-            advice = [
-              "Increase your monthly payment instead of lengthening tenure to minimize lifetime interest costs.",
-              "Track your bank's reset cycle date closely to secure benchmark transparency."
-            ]
-            plain_summary = "Floating interest rate increases do not invoke penalties but directly increase total lifetime interest obligations or adjust monthly EMI draft requirements."
-            
+            penalty_amount = "2% penal interest per month"
+            extra_interest = "₹5,000"
+            total_extra_cost = "₹8,500"
+            credit_score_impact = "-50 to -80 points (Substantial Drop)"
+            plain_summary = "Missing or delaying commitments triggers immediate compound interest adjustments and bureau credit score downgrades."
         else:
-            # Customized dynamic fallback for any other typed text!
-            penalty_amount = "₹2,500 standard administrative levy"
-            extra_interest = "₹1,500"
-            total_extra_cost = "₹4,000"
-            credit_score_impact = "-10 to -30 points"
-            total_extra_payment = "₹4,000"
-            recovery_timeline = "3-6 months"
-            bank_action_risk = "Medium"
-            severity_level = "Medium"
-            timeline_effects = [
-              {"month": 1, "event": f"Scenario adjustment '{scenario}' reviewed", "cost": "₹2,500", "severity": "low"},
-              {"month": 2, "event": "Bank technical fee processed", "cost": "₹1,500", "severity": "medium"},
-              {"month": 3, "event": "Loan ledger amortizations revised", "cost": "₹0", "severity": "low"}
-            ]
-            advice = [
-              f"Reach out to your banking branch relative to scenario '{scenario}'.",
-              "Maintain dynamic backup liquidity options to safeguard cash flows."
-            ]
-            plain_summary = f"Your scenario '{scenario}' triggers general administrative bank guidelines. We recommend auditing the precise term shifts prior to execution."
-            
+            penalty_amount = "₹0"
+            extra_interest = "₹0"
+            total_extra_cost = "₹0"
+            credit_score_impact = "None"
+            plain_summary = f"The scenario '{scenario}' reviewed has normal compliance and will not result in critical financial penalties."
+
         return json.dumps({
           "scenario": scenario,
           "immediate_impact": {
@@ -406,183 +506,409 @@ def get_mock_json_response(prompt: str) -> str:
             "extra_interest": extra_interest,
             "total_extra_cost": total_extra_cost
           },
-          "timeline_effects": timeline_effects,
+          "timeline_effects": [
+            { "month": 1, "event": "Late fees applied", "cost": "₹2,500", "severity": "medium" },
+            { "month": 2, "event": "Credit Bureau notified", "cost": "₹0", "severity": "high" }
+          ],
           "credit_score_impact": credit_score_impact,
-          "total_extra_payment": total_extra_payment,
-          "recovery_timeline": recovery_timeline,
-          "bank_action_risk": bank_action_risk,
-          "advice": advice,
-          "severity_level": severity_level,
+          "total_extra_payment": total_extra_cost,
+          "recovery_timeline": "6 Months",
+          "bank_action_risk": "Medium",
+          "advice": ["Submit written clarification to the provider.", "Pay off the outstanding balance quickly."],
+          "severity_level": "High",
           "plain_summary": plain_summary
         })
 
-    # Deadline Panic Predictor
+    # ── Step 8: Handle Milestones / Panics Route ─────────────────────
     if "deadline" in p_lower or "upcoming_milestones" in p_lower:
-        start_date = "2026-05-18"
-        salary = 120000.0
-        
-        import re
-        date_match = re.search(r"LOAN START DATE: ([\d-]+)", prompt)
-        if date_match:
-            start_date = date_match.group(1).strip()
-            
-        sal_match = re.search(r"MONTHLY SALARY: ₹([\d,]+)", prompt)
-        if sal_match:
-            salary = float(sal_match.group(1).replace(",", ""))
-            
-        # Parse year, month, day to build milestones dynamically
-        try:
-            year, month, day = map(int, start_date.split("-"))
-            m1_date = f"{year+1}-{month:02d}-{day:02d}"
-            m2_date = f"{year+2}-{month:02d}-{day:02d}"
-            panic_month = "June"
-            panic_period = f"{panic_month} {year+1}"
-            prep_month = "March"
-            prep_period = f"{prep_month} {year+1}"
-        except Exception:
-            m1_date = "2027-05-18"
-            m2_date = "2028-05-18"
-            panic_period = "June 2027"
-            prep_period = "March 2027"
-            
-        # Dynamic calculations based on salary
-        estimated_shortfall = "₹15,000" if salary > 80000 else "₹30,000 (Critical cash drain!)"
-        risk_level = "High" if salary > 80000 else "Critical"
-        save_amount = "₹5,000" if salary > 80000 else "₹10,000"
-        
         return json.dumps({
           "upcoming_milestones": [
-            {
-              "date": m1_date,
-              "event": "Year 1 Amortization Anniversary",
-              "type": "milestone",
-              "financial_note": f"₹5.2L principal amortized. Interest rate lock conversion triggers next month."
-            },
-            {
-              "date": m2_date,
-              "event": "Year 2 Principal Reduction Milestone",
-              "type": "milestone",
-              "financial_note": "₹11.4L paid. Equity release option unlocked at 8.25% MCLR."
-            }
+            { "date": "2027-05-18", "event": "Anniversary Review Cycle", "type": "milestone", "financial_note": "Amortization schedule updates. Dynamic rates spread will be audited." }
           ],
           "panic_periods": [
-            {
-              "period": panic_period,
-              "reason": "School admission fees coincide with standard quarterly rate spread reviews, creating pressure spikes.",
-              "risk_level": risk_level,
-              "estimated_shortfall": estimated_shortfall,
-              "advice": f"Shield your cash reserves: Set aside an extra {save_amount} per month beginning {prep_period} to comfortably absorb school fee obligations."
-            }
+            { "period": "June 2027", "reason": "Seasonal expenditures peak concurrently.", "risk_level": "Medium", "estimated_shortfall": "₹10,000", "advice": "Set aside extra cash reserves starting now." }
           ],
-          "5_year_forecast": {
-            "easy_years": [1, 2],
-            "challenging_years": [3, 5],
-            "reason": f"MCLR floating spreads reset in Year 3. Borrowers earning ₹{salary:,.0f} per month will outpace EMI obligations fully by Year 5 as salary grows."
-          },
-          "smart_tip": f"Save up to 3x of your monthly EMI as a ring-fenced reserve. At ₹{salary:,.0f}/mo, an emergency liquid pool of ₹1.5L shields you from benchmark adjustments."
+          "5_year_forecast": { "easy_years": [1], "challenging_years": [3], "reason": "Exclusion timelines and reset periods trigger adjustments." },
+          "smart_tip": "Keep a small cash buffer in a designated reserve account."
         })
 
-    # Return standard high-fidelity consolidated master audit fallback
+    # ── Step 9: Consolidated Master Audit Fallback ───────────────────
+    # We construct highly targeted hidden traps by scanning actual document text
+    # for verbatim quotes matching the detected category.
+    if category == "Pet":
+        summary = f"This {lender_name} Pet Policy covers basic veterinary healthcare up to {loan_amount}. However, it contains typical breed-specific congenital exclusions, pre-existing health exclusions, and reserves the right to increase monthly premiums unilaterally."
+        
+        q1 = find_verbatim_quote(["condition", "exclude"], "Pre-existing veterinary health conditions or chronic illnesses prior to policy registration are strictly excluded from all coverages.")
+        q2 = find_verbatim_quote(["hereditary", "exclude"], "Hereditary conditions, structural joint issues, and congenital pet defects are not subject to basic premium reimbursements.")
+        q3 = find_verbatim_quote(["premium", "increase"], "The provider reserves the absolute right to adjust monthly pet premiums annually based on claims frequency and age brackets.")
+
+        hidden_traps = [
+            {
+                "id": 1, "severity": "Critical", "title": "Pre-Existing Conditions Exclusion",
+                "original_text": q1,
+                "plain_explanation": "Any illness or injury your pet showed symptoms of before buying this policy is never covered.",
+                "impact": "You must pay 100% of vet costs for pre-existing issues, costing you ₹30,000+ for recurring treatments.",
+                "advice": "Get a complete veterinary clearance document before purchase to prove what is currently a healthy status."
+            },
+            {
+                "id": 2, "severity": "High", "title": "Hereditary Joint Exclusions",
+                "original_text": q2,
+                "plain_explanation": "Diseases common to your dog/cat breed (like hip dysplasia in Retrievers) are not covered.",
+                "impact": "Joint surgeries or breed-specific hereditary medical bills of up to ₹60,000 must be paid out-of-pocket.",
+                "advice": "Ask the agency to add a custom breed-specific waiver rider."
+            },
+            {
+                "id": 3, "severity": "Medium", "title": "Unilateral Premium Hikes",
+                "original_text": q3,
+                "plain_explanation": "The provider can raise your premium rate next year without your permission if claims rise.",
+                "impact": "Your monthly outlays will spike by ₹10,000+ annually as your pet gets older.",
+                "advice": "Choose providers offering a locked-premium structure or annual rate caps under 10%."
+            }
+        ]
+        friendly_explanations = [
+            { "legal_text": "Exclusion of congenital anomalies.", "friendly_text": "Issues your pet is born with are not covered.", "emoji": "🐕", "category": "Insurance" }
+        ]
+        verdict = "This pet assurance document offers standard vet coverage, but heavily limits protection for pre-existing or breed-specific diseases. Ensure medical history is fully cleared."
+        top_risk = "Pre-existing health exclusion clause that voids chronic coverage."
+        flag = "Unilateral Premium Spreads"
+        flag_reason = "Enables unlimited annual increases in premiums."
+        flag_orig = q3
+
+    elif category == "Insurance":
+        # Dynamic Sub-Type Detection for Insurance
+        insurance_sub_type = "Health Insurance"  # default
+        auto_words = [r"\bcar\b", r"\bvehicle\b", r"\bauto\b", r"\bmotor\b", r"\bdriving\b", r"\bcollision\b", r"\bgarage\b", r"\broadside\b", r"\baccident\b"]
+        life_words = [r"\blife\b", r"\bdeath\b", r"\bbeneficiary\b", r"\bsurrender\b", r"\bterm\b", r"\bmortality\b", r"\bnominee\b"]
+        prop_words = [r"\bproperty\b", r"\bhome\b", r"\bbuilding\b", r"\bdwelling\b", r"\bfire\b", r"\btheft\b", r"\bsubsidence\b", r"\bstructure\b"]
+
+        if any(re.search(pat, doc_lower) for pat in auto_words):
+            insurance_sub_type = "Auto Insurance"
+        elif any(re.search(pat, doc_lower) for pat in life_words):
+            insurance_sub_type = "Life Insurance"
+        elif any(re.search(pat, doc_lower) for pat in prop_words):
+            insurance_sub_type = "Property Insurance"
+
+        if insurance_sub_type == "Auto Insurance":
+            summary = (
+                f"This comprehensive motor policy from {lender_name} offers a coverage sum of {loan_amount} for own damage and third-party liabilities. "
+                f"Crucially, it enforces a steep depreciation schedule on plastic, nylon, and rubber components, meaning you will face up to 50% out-of-pocket costs for parts during repairs. "
+                f"Additionally, cashless repairs are strictly limited to network garages, and minor independent claims are subject to a high compulsory deductible excess. "
+                f"Always consult network locations before filing a claim to avoid coverage reductions."
+            )
+            
+            q1 = find_verbatim_quote(["depreciation", "percent"], "Depreciation rates of up to 50% shall apply on nylon, plastic, rubber parts and batteries replaced during vehicle repair claims.")
+            q2 = find_verbatim_quote(["deductible", "excess"], "A compulsory deductible excess of INR 2,00,000 shall be borne by the insured for every separate claim event under this policy.")
+            q3 = find_verbatim_quote(["network", "garage"], "Reimbursements for repairs undertaken at non-network garages are restricted to 70% of standard estimated surveyor repair costs.")
+
+            hidden_traps = [
+                {
+                    "id": 1, "severity": "Critical", "title": "50% Depreciation on Parts",
+                    "original_text": q1,
+                    "plain_explanation": "For parts like bumpers or plastic components, you must pay 50% of the replacement cost yourself.",
+                    "impact": "Saves the insurer money but costs you ₹10,000+ during an accident repair.",
+                    "advice": "Opt for a Zero-Depreciation add-on cover by paying a small extra premium."
+                },
+                {
+                    "id": 2, "severity": "High", "title": "Compulsory Deductible Excess",
+                    "original_text": q2,
+                    "plain_explanation": "For every single claim, you must pay the first ₹2,000 yourself before the insurer pays anything.",
+                    "impact": "Minor repairs or scratches under ₹2,000 are not worth claiming since you pay the full amount anyway.",
+                    "advice": "Avoid claiming for minor paint scuffs to protect your No Claim Bonus (NCB)."
+                },
+                {
+                    "id": 3, "severity": "Medium", "title": "Non-Network Garage Limit",
+                    "original_text": q3,
+                    "plain_explanation": "If you get your vehicle repaired outside the insurer's network of garages, they will only reimburse 70% of standard rates.",
+                    "impact": "You are exposed to significant out-of-pocket expenses if towed to a local independent garage.",
+                    "advice": "Always check and confirm cashless network garage locations prior to scheduling repairs."
+                }
+            ]
+            friendly_explanations = [
+                { "legal_text": "Compulsory deductible excess clause.", "friendly_text": "You must pay the first pocket-sized chunk of any repair bill before insurance covers the rest.", "emoji": "🚗", "category": "Insurance" }
+            ]
+            verdict = "This comprehensive motor policy offers good third-party shielding but high parts depreciation and garage restrictions. A Zero-depreciation add-on is highly recommended."
+            top_risk = "50% parts depreciation schedule on plastics/rubber."
+            flag = "Composite parts depreciation deduction"
+            flag_reason = "Applying high depreciation on wear parts substantially reduces insurer claims payout."
+            flag_orig = q1
+
+        elif insurance_sub_type == "Life Insurance":
+            summary = (
+                f"This premium term life policy from {lender_name} secures a death benefit payout of {loan_amount} for your designated nominees. "
+                f"However, it contains a critical absolute disclosure warranty where any minor omission or history mismatch can fully void the policy. "
+                f"Furthermore, self-harm and suicide exclusions strictly apply for the first 12 months, and early policy surrenders prior to year 3 incur steep 100% forfeitures. "
+                f"Ensure absolute medical history accuracy when filling out proposal forms to protect your family's future."
+            )
+            
+            q1 = find_verbatim_quote(["disclosure", "declare"], "Any material misrepresentation, omission, or non-declaration of pre-existing health habits will render this policy void ab initio.")
+            q2 = find_verbatim_quote(["suicide", "exclude"], "No death benefit shall be payable if the life insured commits suicide, whether sane or insane, within 12 months of inception.")
+            q3 = find_verbatim_quote(["surrender", "charge"], "Early surrender or policy termination prior to year 3 yields zero surrender value, and active surrender charges of up to 40% apply in year 4.")
+
+            hidden_traps = [
+                {
+                    "id": 1, "severity": "Critical", "title": "Absolute Disclosure Warranty",
+                    "original_text": q1,
+                    "plain_explanation": "If you forget to list a minor medical habit or past checkup, the insurer can declare the policy void and refuse to pay your family when you die.",
+                    "impact": "Nominees get a ₹0 payout after years of premium payments due to minor history discrepancies.",
+                    "advice": "Fill out the proposal form yourself and declare every single medical checkup or history detail, no matter how minor."
+                },
+                {
+                    "id": 2, "severity": "High", "title": "First-Year Suicide Exclusion",
+                    "original_text": q2,
+                    "plain_explanation": "If death occurs by suicide in the first 12 months, no death benefit is paid; only the premiums paid are returned.",
+                    "impact": "Nominees are barred from claim settlements in the first year under specific self-harm circumstances.",
+                    "advice": "Be aware of standard suicide exclusions which are standard industry practice across almost all insurers."
+                },
+                {
+                    "id": 3, "severity": "Medium", "title": "Steep Surrender Charges",
+                    "original_text": q3,
+                    "plain_explanation": "If you stop paying premiums early or surrender the policy, you lose all your money or face massive exit penalties.",
+                    "impact": "Cancelling in year 2 or 3 means your entire investment is completely forfeited.",
+                    "advice": "Choose pure term plans over expensive endowment plans to keep premium costs highly flexible and low."
+                }
+            ]
+            friendly_explanations = [
+                { "legal_text": "Material misrepresentation voids contract.", "friendly_text": "If you leave out any medical info when signing, the insurer can cancel the policy and refuse to pay your family.", "emoji": "❤️", "category": "Insurance" }
+            ]
+            verdict = "This term life policy has a substantial death benefit but extremely strict disclosure criteria. Fill out forms yourself to guarantee complete accuracy."
+            top_risk = "Material non-disclosure voidability clause."
+            flag = "Surrender forfeiture charges"
+            flag_reason = "Forfeiting 100% of accumulated premiums for early exits creates extreme customer locked-in loss."
+            flag_orig = q3
+
+        elif insurance_sub_type == "Property Insurance":
+            summary = (
+                f"This structural property policy from {lender_name} covers dwelling structure damages up to {loan_amount} against fire and basic hazards. "
+                f"However, it mandates the lending bank as the primary beneficiary, meaning claim settlements go directly to clearing your outstanding mortgage balance rather than providing you with construction funds. "
+                f"Additionally, it strictly excludes damage from earth shifts, subsidence, or landslides, and applies a compounding building-age depreciation factor. "
+                f"Check with the bank to establish rebuilding escrows before finalizing."
+            )
+            
+            q1 = find_verbatim_quote(["beneficiary", "bank"], "In the event of structural damage, all claim proceeds shall be paid directly to the lending bank named as primary beneficiary.")
+            q2 = find_verbatim_quote(["subsidence", "landslide"], "Damage arising from structural subsidence, landslide, ground movement, or coastal erosion is strictly excluded.")
+            q3 = find_verbatim_quote(["depreciation", "age"], "A structural depreciation factor of 2.5% per annum applies to the property structure value based on building age.")
+
+            hidden_traps = [
+                {
+                    "id": 1, "severity": "Critical", "title": "Bank Named as Sole Beneficiary",
+                    "original_text": q1,
+                    "plain_explanation": "If your house is damaged, the insurance money goes directly to pay off your mortgage balance, not to you for rebuilding.",
+                    "impact": "You are left with no home and no rebuilding funds, though your bank loan is cleared.",
+                    "advice": "Request a clause ensuring that funds can be disbursed into a joint escrow for rebuilding purposes."
+                },
+                {
+                    "id": 2, "severity": "High", "title": "Subsidence & Landslide Exclusion",
+                    "original_text": q2,
+                    "plain_explanation": "If your home collapses or gets damaged due to earth movement, landslide, or ground shifting, you aren't covered.",
+                    "impact": "A mudslide or soft soil shift can completely ruin your property and leave you with ₹0 assistance.",
+                    "advice": "Purchase an add-on rider covering earthquake, landslide, and geological shifts if in sensitive areas."
+                },
+                {
+                    "id": 3, "severity": "Medium", "title": "Annual Structural Depreciation",
+                    "original_text": q3,
+                    "plain_explanation": "The insurer reduces the payout value of your building structure by 2.5% every year based on its age.",
+                    "impact": "For a 10-year-old building, you will only receive 75% of the actual reconstruction cost.",
+                    "advice": "Insist on a 'Reinstatement Value' policy where claims are paid based on reconstruction cost without depreciation."
+                }
+            ]
+            friendly_explanations = [
+                { "legal_text": "Lender named as primary loss payee.", "friendly_text": "If a disaster happens, the insurance check goes directly to your bank to settle the debt, not to your pocket.", "emoji": "🏠", "category": "Insurance" }
+            ]
+            verdict = "This property policy secures basic fire coverage but is heavily weighted towards protecting the lending bank rather than rebuilding the homeowner's life."
+            top_risk = "Bank named as sole primary beneficiary."
+            flag = "Earth shift subsidence exclusion clause"
+            flag_reason = "Excluding basic earth movements is a standard trap that voids coverage in soft soil terrains."
+            flag_orig = q2
+
+        else: # Health Insurance (Default)
+            summary = (
+                f"This premium health insurance policy from {lender_name} establishes a Sum Insured of {loan_amount} for primary hospitalizations. "
+                f"However, it contains a critical mandatory 20% co-payment clause on specialized treatments and a strict 1% room rent sub-limit that can lead to large proportional deduction fees. "
+                f"Additionally, a long 36-month waiting period applies to chronic conditions like diabetes and hypertension before they are fully covered. "
+                f"Review network hospitals and ward types carefully to minimize out-of-pocket exposure."
+            )
+            
+            q1 = find_verbatim_quote(["co-payment", "share"], "The insured agrees to a mandatory co-payment ratio of 20% on all specialized surgery treatments and hospitalizations.")
+            q2 = find_verbatim_quote(["room rent", "limit"], "Hospital room rent charges are capped at a strict sub-limit of 1% of the overall Sum Insured per day.")
+            q3 = find_verbatim_quote(["waiting period", "chronic"], "A mandatory waiting period of 36 months applies to all claims related to diabetes, hypertension, and joint treatments.")
+
+            hidden_traps = [
+                {
+                    "id": 1, "severity": "Critical", "title": "20% Mandatory Co-Payment",
+                    "original_text": q1,
+                    "plain_explanation": "For every medical bill, you are forced to pay 20% of the total cost out of your own savings.",
+                    "impact": "On a ₹5,00,000 major surgery claim, you must pay ₹1,00,000 cash yourself.",
+                    "advice": "Request an insurance upgrade to a '0% Co-Pay' plan by paying a minor premium addition."
+                },
+                {
+                    "id": 2, "severity": "High", "title": "1% Room Rent Sub-Limit",
+                    "original_text": q2,
+                    "plain_explanation": "The maximum the insurer pays for your hospital room per day is capped. Nicer rooms incur huge personal costs.",
+                    "impact": "If room costs ₹10,000/day but limit is ₹5,000, you pay ₹5,000/day plus a proportional reduction on all doctor fees.",
+                    "advice": "Insist on an insurance plan with 'No Room Rent Caps' to avoid treatment deductions."
+                },
+                {
+                    "id": 3, "severity": "Medium", "title": "36-Month Waiting Period",
+                    "original_text": q3,
+                    "plain_explanation": "You are barred from claiming any insurance benefits for chronic ailments during the first 3 years.",
+                    "impact": "You must fund all treatments for diabetes, high blood pressure, or joint issues for 36 months.",
+                    "advice": "Ask if you can pay an extra fee to reduce waiting periods to 12 months."
+                }
+            ]
+            friendly_explanations = [
+                { "legal_text": "Daily room rent capping limitations.", "friendly_text": "Insurer won't pay for premium luxury rooms during hospitalizations.", "emoji": "🏥", "category": "Insurance" }
+            ]
+            verdict = "This health policy covers massive sum insured limits but has severe room rent caps and co-pays. Perfect for basic hospitalization but expensive for premium ward rooms."
+            top_risk = "Mandatory 20% co-payment rule on specialized surgeries."
+            flag = "Proportional treatment deduction clause"
+            flag_reason = "Tying all medical expenses to the room rent sub-limit allows the insurer to trim your claims."
+            flag_orig = q2
+
+    elif category == "Lease":
+        summary = f"This residential lease from {lender_name} specifies a monthly rental rate of {loan_amount} with a {interest_rate}. However, it contains unilateral 7-day landlord evictions, automatic uncapped rent escalations, and highly aggressive security deposit wear-and-tear deductions."
+        
+        q1 = find_verbatim_quote(["terminate", "notice"], "The Landlord may terminate this lease agreement and demand immediate premises possession upon giving a 7-day written notice.")
+        q2 = find_verbatim_quote(["deposit", "deduct"], "The security deposit shall be refunded after deducting uncapped fees for general maintenance, painting, and wear-and-tear.")
+        q3 = find_verbatim_quote(["escalate", "rent"], "Upon lease renewal, the monthly rent shall automatically escalate by a flat rate of 12% without further market rate assessment.")
+
+        hidden_traps = [
+            {
+                "id": 1, "severity": "Critical", "title": "7-Day Landlord Eviction Notice",
+                "original_text": q1,
+                "plain_explanation": "The landlord can force you to pack up and move out within a week with zero legal justification.",
+                "impact": "Forces massive emergency relocation expenses, broker fees, and intense housing search pressure.",
+                "advice": "Alter this clause to require at least a standard 30-day or 60-day notice for eviction."
+            },
+            {
+                "id": 2, "severity": "High", "title": "Uncapped Wear-and-Tear Deductions",
+                "original_text": q2,
+                "plain_explanation": "The landlord can deduct any money they want from your security deposit for simple painting or cleaning.",
+                "impact": "You could lose your entire ₹44,000 security deposit for normal scuffs or marks.",
+                "advice": "Amend this clause to explicitly exclude 'normal wear-and-tear' from deposit deductions."
+            },
+            {
+                "id": 3, "severity": "Medium", "title": "12% Automatic Rent Escalation",
+                "original_text": q3,
+                "plain_explanation": "Your rent goes up by a flat 12% next year, regardless of whether property prices fall.",
+                "impact": "Your annual rent outlay increases by ₹31,680 next year.",
+                "advice": "Negotiate to cap annual rental increases at 5% maximum."
+            }
+        ]
+        friendly_explanations = [
+            { "legal_text": "Deposit deduction for paint wear.", "friendly_text": "Landlord using tenant money to repaint standard scuffs.", "emoji": "🏠", "category": "Rights" }
+        ]
+        verdict = "The lease is standard but very tenant-unfavorable. The 7-day eviction notice and uncapped security deposit deductions represent significant financial and moving risks."
+        top_risk = "Unilateral 7-day landlord termination notice."
+        flag = "Wear-and-tear repaint charge"
+        flag_reason = "Forcing tenants to pay for professional repainting is a standard landlord trap."
+        flag_orig = q2
+
+    else: # Loan
+        summary = f"This Home Loan contract from {lender_name} provides {loan_amount} at {interest_rate}. However, it enforces uncapped floating benchmark resets, substantial penal compound interest rates on defaults, and uncapped exit prepayment charges."
+        
+        q1 = find_verbatim_quote(["margin", "sole discretion"], "The Lender reserves the absolute right to revise the benchmark rate spread from time to time at its sole discretion.")
+        q2 = find_verbatim_quote(["penal", "default"], "Any default in payment of EMI will attract additional interest at 2% per month compounded on outstanding arrears.")
+        q3 = find_verbatim_quote(["prepayment", "charge"], "Prepayment or transfer of the outstanding balance will attract a flat foreclosure charge of 2% of the principal sum.")
+
+        hidden_traps = [
+            {
+                "id": 1, "severity": "Critical", "title": "Unilateral Floating Margin Revision",
+                "original_text": q1,
+                "plain_explanation": "The bank can raise your interest rate whenever they want, even if market rates do not change, without asking your permission.",
+                "impact": "A 1% increase in interest rate will add over ₹7,0,000 of extra lifetime interest cost to your loan balance.",
+                "advice": "Bargain to add a margin cap clause that restricts spread adjustments to a maximum of 1% annually."
+            },
+            {
+                "id": 2, "severity": "High", "title": "2% Compounded Late Penal Interest",
+                "original_text": q2,
+                "plain_explanation": "If you are late on a payment, the bank charges you an extremely high penalty rate that compounds month after month.",
+                "impact": "Missing just 2 payments can trigger cumulative penalties of over ₹12,000 within weeks.",
+                "advice": "Ask the bank if they can offer a 15-day grace period before compound late penalties are applied."
+            },
+            {
+                "id": 3, "severity": "Medium", "title": "2% Uncapped Prepayment Exit Penalties",
+                "original_text": q3,
+                "plain_explanation": "If you decide to prepay your loan early or transfer it to a cheaper bank, you have to pay a massive exit fee.",
+                "impact": "Transferring the loan in year 5 will cost you over ₹90,000 upfront as exit fees.",
+                "advice": "Negotiate to waive the foreclosure penalty after the third year of active repayment."
+            }
+        ]
+        friendly_explanations = [
+            { "legal_text": "Floating spread margin revision indexes.", "friendly_text": "The margin rate added to basic central bank interest index can be shifted by lender.", "emoji": "💸", "category": "Interest" }
+        ]
+        verdict = "This floating rate loan offers competitive starting rates but exposes you to severe margin risk and exit prepayment penalties if refinance is sought."
+        top_risk = "Uncapped unilateral floating benchmark interest spread revisions."
+        flag = "Penal compound interest rate"
+        flag_reason = "Compounding late fees at 24% annually creates rapid debt traps."
+        flag_orig = q2
+
     return json.dumps({
       "core_info": {
-        "loan_type": "Home Loan",
-        "lender_name": "State Bank of India (MCLR Dynamic)",
-        "borrower_name": "Rohan Sharma",
-        "loan_amount": "₹50,00,000",
-        "loan_amount_numeric": 5000000,
-        "interest_rate": "8.5% p.a.",
-        "interest_rate_numeric": 8.5,
-        "interest_type": "Floating",
-        "tenure": "20 Years",
-        "tenure_months": 240,
-        "emi_amount": "₹43,391",
-        "emi_numeric": 43391,
-        "processing_fee": "₹15,000 flat administrative levy",
-        "document_date": "18 May 2026",
-        "summary": "This is a premium-grade high-fidelity SBI home loan contract. While principal levels and starting rate ratios are standard, the contract includes aggressive MCLR floating margin definitions and substantial late compounding penalties.",
+        "loan_type": category + (" Policy" if category in ["Pet", "Insurance"] else " Agreement"),
+        "lender_name": lender_name,
+        "borrower_name": borrower_name,
+        "loan_amount": loan_amount,
+        "loan_amount_numeric": loan_amount_numeric,
+        "interest_rate": interest_rate,
+        "interest_rate_numeric": interest_rate_numeric,
+        "interest_type": interest_type,
+        "tenure": tenure,
+        "tenure_months": tenure_months,
+        "emi_amount": emi_amount,
+        "emi_numeric": emi_numeric,
+        "processing_fee": processing_fee,
+        "document_date": document_date,
+        "summary": summary,
         "document_quality": "Clear"
       },
-      "hidden_traps": [
-        {
-          "id": 1,
-          "title": "Unilateral Floating Margin Clause",
-          "severity": "High",
-          "original_text": "The bank reserves the absolute right to revise the benchmark rate spread from time to time at its sole discretion.",
-          "plain_explanation": "The bank can raise your interest rate whenever they want, even if market rates do not change, without asking your permission.",
-          "impact": "A 1% increase in interest rate will add over ₹7,0,000 of extra lifetime interest cost to your loan balance.",
-          "advice": "Bargain to add a margin cap clause that restricts spread adjustments to a maximum of 1% annually."
-        },
-        {
-          "id": 2,
-          "title": "Compounded Penal Interest Rates",
-          "severity": "Critical",
-          "original_text": "Any default in payment of EMI will attract additional interest at 2% per month compounded on outstanding arrears.",
-          "plain_explanation": "If you are late on a payment, the bank charges you an extremely high penalty rate that compounds month after month.",
-          "impact": "Missing just 2 payments can trigger cumulative penalties of over ₹12,000 within weeks.",
-          "advice": "Ask the bank if they can offer a 15-day grace period before compound late penalties are applied."
-        },
-        {
-          "id": 3,
-          "title": "Uncapped Foreclosure exit levies",
-          "severity": "High",
-          "original_text": "Prepayment or transfer of the outstanding balance will attract a flat foreclosure charge of 2% of the principal sum.",
-          "plain_explanation": "If you decide to prepay your loan early or transfer it to a cheaper bank, you have to pay a massive exit fee.",
-          "impact": "Transferring the loan in year 5 will cost you over ₹90,000 upfront as exit fees.",
-          "advice": "Negotiate to waive the foreclosure penalty after the third year of active repayment."
-        }
-      ],
-      "friendly_explanations": [
-        {
-          "legal_text": "The borrower shall pay to the bank all charges for administrative tasks and technical evaluations.",
-          "friendly_text": "You are paying for all the bank's internal reviews, even if the loan is rejected.",
-          "emoji": "💸",
-          "category": "Penalty"
-        },
-        {
-          "legal_text": "The premium dynamic benchmark rate shall fluctuate in accordance with public policy MCLR adjustments.",
-          "friendly_text": "Your rate changes when India's central bank adjusts core policy lending metrics.",
-          "emoji": "📈",
-          "category": "Interest"
-        }
-      ],
+      "hidden_traps": hidden_traps,
+      "friendly_explanations": friendly_explanations,
       "risk_score": {
-        "overall_score": 60,
-        "overall_level": "Medium Risk",
-        "overall_color": "amber",
+        "overall_score": 60 if category == "Loan" else 65 if category == "Lease" else 55,
+        "overall_level": "Medium Risk" if category != "Lease" else "High Risk",
+        "overall_color": "amber" if category != "Lease" else "orange",
         "sub_scores": {
-          "penalty_risk": 80,
-          "interest_stability": 40,
-          "transparency": 75,
-          "fairness": 70,
-          "legal_complexity": 50
+          "penalty_risk": 80, "interest_stability": 40, "transparency": 75, "fairness": 70, "legal_complexity": 50
         },
-        "verdict": "This loan represents standard Indian floating rate risks. The initial rate is highly competitive, but the aggressive late compounds and exit fees place high pressure on long-term cash flows.",
-        "top_risk_factor": "Unilateral spread adjustment reserves that let the bank change terms without consent."
+        "verdict": verdict,
+        "top_risk_factor": top_risk
       },
       "suspicious_clauses": {
         "overall_suspicion": "Minor Concerns",
         "suspicious_items": [
           {
             "id": 1,
-            "flag": "Vague Administrative Fee Clauses",
+            "flag": flag,
             "confidence": 85,
-            "reason": "Fees should be flat and specified; vague language allows the bank to add hidden charges later.",
-            "original_text": "Other dynamic levies may be applied by the bank for seasonal audits.",
-            "industry_standard": "All applicable fees must be clearly detailed in the core schedule.",
-            "severity": "Unusual"
+            "reason": flag_reason,
+            "original_text": flag_orig,
+            "industry_standard": "All key rates, fees and penalties must be flat, transparent and capped.",
+            "severity": "High Concern"
+          }
+        ]
+      },
+      "reality_cost": {
+        "shock_statement": "The total amortized cost includes standard base premiums/fees.",
+        "principal": loan_amount_numeric,
+        "total_interest": interest_rate_numeric * tenure_months if type(interest_rate_numeric) in [int, float] else 0,
+        "total_payment": loan_amount_numeric + (interest_rate_numeric * tenure_months if type(interest_rate_numeric) in [int, float] else 0),
+        "interest_percentage": 8.5,
+        "yearly_breakdown": [
+          {
+            "year": 1,
+            "emi_paid": emi_numeric * 12 if type(emi_numeric) in [int, float] else 0,
+            "interest_paid": interest_rate_numeric * 12 if type(interest_rate_numeric) in [int, float] else 0,
+            "principal_paid": loan_amount_numeric // max(1, (tenure_months // 12)),
+            "remaining_balance": max(0, loan_amount_numeric - (loan_amount_numeric // max(1, (tenure_months // 12))))
           }
         ]
       },
       "trust_score": {
-        "transparency_score": 75,
-        "transparency_note": "Core repayment parameters are clear, but hidden administrative levy details are vague.",
-        "fairness_score": 60,
-        "fairness_note": "Foreclosure fees and compound penalties heavily favor the lender's interest margins.",
-        "complexity_score": 45,
-        "complexity_note": "Written in standard legal English, requiring active financial knowledge to decipher completely.",
-        "trust_grade": "B",
-        "trust_grade_label": "Fairly Trustworthy",
-        "trust_summary": "The document is standard for Tier-1 public sector banks but enforces several aggressive clauses that are highly unfavorable to individual retail borrowers."
+        "transparency_score": 75, "transparency_note": "Core cost items are stated but dynamic penalty margins are vague.",
+        "fairness_score": 60, "fairness_note": "Unilateral adjustment privileges heavily favor the lender's interest margins.",
+        "complexity_score": 45, "complexity_note": "Standard legal phrasing requires active review.",
+        "trust_grade": "B", "trust_grade_label": "Fairly Trustworthy",
+        "trust_summary": "The document utilizes industry standard boilerplate language but includes multiple unfavorable clauses."
       }
     })
 

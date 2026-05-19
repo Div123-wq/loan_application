@@ -21,10 +21,10 @@ def upload_document():
     if file.filename == '':
         return jsonify({"error": "No file selected."}), 400
 
-    allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.webp', '.tiff', '.bmp'}
+    allowed_extensions = {'.pdf', '.png', '.jpg', '.jpeg', '.webp', '.tiff', '.bmp', '.txt'}
     _, ext = os.path.splitext(file.filename.lower())
     if ext not in allowed_extensions:
-        return jsonify({"error": f"Unsupported file type: {ext}. Allowed: PDF, PNG, JPG, JPEG, WEBP, TIFF, BMP"}), 400
+        return jsonify({"error": f"Unsupported file type: {ext}. Allowed: PDF, PNG, JPG, JPEG, WEBP, TIFF, BMP, TXT"}), 400
 
     try:
         file_bytes = file.read()

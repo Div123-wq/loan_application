@@ -54,7 +54,7 @@ You must return a single JSON object containing exactly this structure, with no 
     "emi_numeric": 43391,
     "processing_fee": "string (processing charges or deposit fee, e.g. ₹10,000)",
     "document_date": "string (e.g. 18 May 2026)",
-    "summary": "10-12 line expert plain-English summary of this document structure, highlighting key structural caveats and risks.",
+    "summary": "Provide a comprehensive, high-value summary of the document (4-6 detailed sentences or bullet points). For loans, focus on rates and foreclosure penalties. For insurance, pet policies, or leases, provide a highly detailed and thorough overview covering co-payment ratios, room rent sub-limits, waiting periods, and major disease/claim exclusions, highlighting the most critical consumer warnings.",
     "document_quality": "Clear / Partially Clear / Unclear"
   }},
   "hidden_traps": [
@@ -159,6 +159,7 @@ def calculate_trust_score(document_text: str) -> dict:
 
 def calculate_reality_cost(core_info: dict) -> dict:
     """Calculate the true total cost of the loan with local precision arithmetic."""
+    loan_type = str(core_info.get("loan_type", "")).lower()
     principal = core_info.get("loan_amount_numeric") or 500000
     rate = core_info.get("interest_rate_numeric") or 12.0
     months = core_info.get("tenure_months") or 60
@@ -176,6 +177,68 @@ def calculate_reality_cost(core_info: dict) -> dict:
         months = 60
         emi = 0
 
+    is_insurance = "insurance" in loan_type or "policy" in loan_type or "pet" in loan_type or "animal" in loan_type
+    is_lease = "lease" in loan_type or "rent" in loan_type
+
+    if is_insurance:
+        total_payment = emi * months
+        # For insurance, UI maps total_interest to "Co-pay Exposure". Estimate at 20% of Sum Insured.
+        total_interest = principal * 0.20
+        interest_percentage = 20.0
+        shock_statement = f"You will pay ₹{total_payment:,.0f} in premiums over {months} months, with an estimated ₹{total_interest:,.0f} out-of-pocket co-pay exposure."
+        
+        yearly_breakdown = []
+        for year in range(1, (months // 12) + 2):
+            if (year - 1) * 12 >= months:
+                break
+            yearly_breakdown.append({
+                "year": year,
+                "emi_paid": round(emi * 12, 0),
+                "interest_paid": 0,
+                "principal_paid": 0,
+                "remaining_balance": round(principal, 0)
+            })
+
+        return {
+            "principal": round(principal, 0),
+            "emi_amount": round(emi, 0),
+            "total_payment": round(total_payment, 0),
+            "total_interest": round(total_interest, 0),
+            "interest_percentage": interest_percentage,
+            "yearly_breakdown": yearly_breakdown,
+            "shock_statement": shock_statement
+        }
+
+    elif is_lease:
+        total_payment = emi * months
+        # For lease, UI maps total_interest to Deposit exposure.
+        total_interest = principal  
+        interest_percentage = 0.0
+        shock_statement = f"You will pay ₹{total_payment:,.0f} in total rent over {months} months, with ₹{principal:,.0f} locked as security deposit."
+
+        yearly_breakdown = []
+        for year in range(1, (months // 12) + 2):
+            if (year - 1) * 12 >= months:
+                break
+            yearly_breakdown.append({
+                "year": year,
+                "emi_paid": round(emi * 12, 0),
+                "interest_paid": 0,
+                "principal_paid": 0,
+                "remaining_balance": 0
+            })
+
+        return {
+            "principal": round(principal, 0),
+            "emi_amount": round(emi, 0),
+            "total_payment": round(total_payment, 0),
+            "total_interest": round(total_interest, 0),
+            "interest_percentage": interest_percentage,
+            "yearly_breakdown": yearly_breakdown,
+            "shock_statement": shock_statement
+        }
+
+    # DEFAULT LOAN LOGIC
     if emi == 0 and rate > 0:
         monthly_rate = rate / 12 / 100
         if monthly_rate > 0:

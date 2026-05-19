@@ -71,6 +71,9 @@ def extract_text_from_file(file_bytes: bytes, filename: str) -> dict:
     elif fname.endswith((".png", ".jpg", ".jpeg", ".webp", ".tiff", ".bmp")):
         image_b64 = extract_text_from_image(file_bytes)
         return {"text": "", "is_image": True, "image_b64": image_b64}
+    elif fname.endswith(".txt"):
+        text = file_bytes.decode("utf-8", errors="ignore")
+        return {"text": text, "is_image": False, "image_b64": None}
     else:
         # Try PDF first, then treat as text
         try:

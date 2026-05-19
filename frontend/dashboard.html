@@ -251,7 +251,7 @@
         </div>
         <div style="text-align: right; display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
           <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtn">
-            <span>📥</span> Export Highlighted PDF Report
+            <span>📥</span> Download PDF Report
           </button>
           <div>
             <span style="font-size: 0.75rem; color: var(--text-muted); display: block;">DATE ANALYZED</span>
@@ -352,10 +352,15 @@
 
       <!-- 7. INTERACTIVE READER SECTION -->
       <div id="section-reader" class="section-content animate-fade-in" style="display:none;">
-        <div class="section-header" style="margin-bottom: 16px;">
+        <div class="section-header" style="margin-bottom: 16px; align-items: flex-start;">
           <div>
             <h3 class="card-title">📖 Interactive Smart Reader</h3>
             <p style="font-size: 0.9rem; margin-top: 4px;">Read your document with AI-highlighted key clauses. Hover/Click on any highlighted section to view instant negotiation advice.</p>
+          </div>
+          <div style="text-align: right; min-width: 180px;">
+            <button class="btn btn-primary btn-sm animate-pulse-glow" onclick="exportHighlightReport()" id="exportReportBtnReader">
+              <span>📥</span> Download PDF Report
+            </button>
           </div>
         </div>
         <div class="reader-container">
@@ -539,7 +544,6 @@
           </p>
         </div>
       </div>
-
     </main>
   </div>
 
@@ -731,16 +735,62 @@
     // Set doc id globally for simulator/chat references
     localStorage.setItem('ll_active_doc_id', activeAnalysis.doc_id);
 
+    // Dynamic model response normalizer to guarantee presence of all metrics/lists
+    if (!activeAnalysis.core_info) activeAnalysis.core_info = {};
+    if (!activeAnalysis.risk_score) activeAnalysis.risk_score = { overall_score: 50, overall_level: "Medium Risk", overall_color: "amber", sub_scores: { penalty_risk: 50, interest_stability: 50, fairness: 50 } };
+    if (!activeAnalysis.risk_score.sub_scores) activeAnalysis.risk_score.sub_scores = { penalty_risk: 50, interest_stability: 50, fairness: 50 };
+    if (!activeAnalysis.hidden_traps) activeAnalysis.hidden_traps = [];
+    if (!activeAnalysis.friendly_explanations) activeAnalysis.friendly_explanations = [];
+    
+    // Normalize suspicious clauses
+    if (!activeAnalysis.suspicious_clauses) {
+      activeAnalysis.suspicious_clauses = { overall_suspicion: "Clean", suspicious_items: [] };
+    } else if (Array.isArray(activeAnalysis.suspicious_clauses)) {
+      activeAnalysis.suspicious_clauses = {
+        overall_suspicion: activeAnalysis.suspicious_clauses.length > 0 ? "Concern Raised" : "Clean",
+        suspicious_items: activeAnalysis.suspicious_clauses.map((item, idx) => ({
+          id: item.id || idx + 1,
+          flag: item.flag || "Flagged Clause",
+          confidence: item.confidence || 80,
+          reason: item.reason || "Deviation from typical protections.",
+          original_text: item.original_text || "",
+          industry_standard: item.industry_standard || "Standard industry protections.",
+          severity: item.severity || "Unusual"
+        }))
+      };
+    } else if (!activeAnalysis.suspicious_clauses.suspicious_items) {
+      activeAnalysis.suspicious_clauses.suspicious_items = [];
+    }
+    
+    // Normalize trust score
+    if (!activeAnalysis.trust_score) {
+      activeAnalysis.trust_score = { trust_grade: "B", trust_grade_label: "Fairly Trustworthy", transparency_score: 75, transparency_note: "Standard structure", fairness_score: 70, fairness_note: "Standard terms", complexity_score: 50, complexity_note: "Standard text", trust_summary: "Standard document structure" };
+    }
+    
+    // Normalize reality cost
+    if (!activeAnalysis.reality_cost) {
+      activeAnalysis.reality_cost = {
+        principal: 500000,
+        emi_amount: 0,
+        total_payment: 500000,
+        total_interest: 0,
+        interest_percentage: 0,
+        shock_statement: "Standard financial repayment structure.",
+        yearly_breakdown: []
+      };
+    }
+
     // Populate Page Elements
-    document.getElementById('docTypeBadge').textContent = activeAnalysis.core_info.loan_type;
-    document.getElementById('docTitle').textContent = activeAnalysis.filename + " Analysis";
-    document.getElementById('docLender').textContent = "Lender: " + activeAnalysis.core_info.lender_name;
-    document.getElementById('docDate').textContent = activeAnalysis.core_info.document_date || "Today";
-    document.getElementById('summaryText').textContent = activeAnalysis.core_info.summary;
+    try {
+      document.getElementById('docTypeBadge').textContent = activeAnalysis.core_info.loan_type || "Document";
+      document.getElementById('docTitle').textContent = (activeAnalysis.filename || "Document") + " Analysis";
+      document.getElementById('docLender').textContent = "Lender: " + (activeAnalysis.core_info.lender_name || "Unknown");
+      document.getElementById('docDate').textContent = activeAnalysis.core_info.document_date || "Today";
+      document.getElementById('summaryText').textContent = activeAnalysis.core_info.summary || "No executive summary could be generated for this document.";
 
     // Extracted Key Metrics
-    document.getElementById('metricAmount').textContent = activeAnalysis.core_info.loan_amount;
-    document.getElementById('metricRate').textContent = activeAnalysis.core_info.interest_rate;
+    document.getElementById('metricAmount').textContent = activeAnalysis.core_info.loan_amount || "N/A";
+    document.getElementById('metricRate').textContent = activeAnalysis.core_info.interest_rate || "N/A";
     document.getElementById('metricRateType').textContent = activeAnalysis.core_info.interest_type;
     document.getElementById('metricEMI').textContent = activeAnalysis.core_info.emi_amount;
     document.getElementById('metricTenure').textContent = activeAnalysis.core_info.tenure;
@@ -782,17 +832,18 @@
     const trapsCont = document.getElementById('trapsContainer');
     trapsCont.innerHTML = '';
     activeAnalysis.hidden_traps.forEach(trap => {
+      const severityStr = trap.severity || "Warning";
       const el = document.createElement('div');
-      el.className = `trap-card severity-${trap.severity.toLowerCase()}`;
+      el.className = `trap-card severity-${severityStr.toLowerCase()}`;
       el.innerHTML = `
         <div class="trap-title">
-          <span class="badge ${trap.severity === 'Critical' ? 'badge-red' : trap.severity === 'High' ? 'badge-orange' : 'badge-amber'}">${trap.severity}</span>
-          ${trap.title}
+          <span class="badge ${severityStr === 'Critical' ? 'badge-red' : severityStr === 'High' ? 'badge-orange' : 'badge-amber'}">${severityStr}</span>
+          ${trap.title || "Hidden Clause"}
         </div>
-        <div class="trap-legal">${trap.original_text}</div>
-        <div class="trap-plain">💡 ${trap.plain_explanation}</div>
-        <div class="trap-impact">🚨 Financial Impact: ${trap.impact}</div>
-        <div class="trap-advice">🛡️ Negotiate Move: ${trap.advice}</div>
+        <div class="trap-legal">${trap.original_text || ""}</div>
+        <div class="trap-plain">💡 ${trap.plain_explanation || ""}</div>
+        <div class="trap-impact">🚨 Financial Impact: ${trap.impact || ""}</div>
+        <div class="trap-advice">🛡️ Negotiate Move: ${trap.advice || ""}</div>
       `;
       trapsCont.appendChild(el);
     });
@@ -826,15 +877,15 @@
       el.className = 'explain-card';
       el.innerHTML = `
         <div class="explain-header">
-          <span>${exp.emoji} CATEGORY: ${exp.category.toUpperCase()}</span>
+          <span>${exp.emoji || '💡'} CATEGORY: ${(exp.category || "General").toUpperCase()}</span>
         </div>
         <div class="explain-body">
           <div class="explain-pane legal">
             <span style="font-weight:700; display:block; margin-bottom:4px; font-size:0.7rem; color:var(--text-muted);">CONTRACTUAL TERMS:</span>
-            "${exp.legal_text}"
+            "${exp.legal_text || ""}"
           </div>
           <div class="explain-pane friendly">
-            ${exp.friendly_text}
+            ${exp.friendly_text || ""}
           </div>
         </div>
       `;
@@ -842,10 +893,11 @@
     });
 
     // Suspicious Alerts Detector
-    document.getElementById('overallSuspicion').textContent = activeAnalysis.suspicious_clauses.overall_suspicion;
-    if(activeAnalysis.suspicious_clauses.overall_suspicion.toLowerCase().includes('highly')) {
+    const overallSuspicion = activeAnalysis.suspicious_clauses.overall_suspicion || "Minor Concerns";
+    document.getElementById('overallSuspicion').textContent = overallSuspicion;
+    if(overallSuspicion.toLowerCase().includes('highly')) {
       document.getElementById('overallSuspicion').className = 'badge badge-red';
-    } else if(activeAnalysis.suspicious_clauses.overall_suspicion.toLowerCase().includes('minor')) {
+    } else if(overallSuspicion.toLowerCase().includes('minor')) {
       document.getElementById('overallSuspicion').className = 'badge badge-amber';
     } else {
       document.getElementById('overallSuspicion').className = 'badge badge-green';
@@ -858,12 +910,12 @@
       el.className = 'trap-card suspicious-card';
       el.innerHTML = `
         <div class="trap-title">
-          <span class="badge badge-red">${item.severity}</span>
-          Confidence: ${item.confidence}% &bull; ${item.flag}
+          <span class="badge badge-red">${item.severity || "Suspicious"}</span>
+          Confidence: ${item.confidence || "High"}% &bull; ${item.flag || "Flagged Clause"}
         </div>
-        <div class="trap-legal">${item.original_text}</div>
-        <div class="trap-plain">🔍 Threat Logic: ${item.reason}</div>
-        <div class="suspicious-standard">⚖️ Industry Standard Benchmark: ${item.industry_standard}</div>
+        <div class="trap-legal">${item.original_text || ""}</div>
+        <div class="trap-plain">🔍 Threat Logic: ${item.reason || ""}</div>
+        <div class="suspicious-standard">⚖️ Industry Standard Benchmark: ${item.industry_standard || ""}</div>
       `;
       suspCont.appendChild(el);
     });
@@ -884,7 +936,9 @@
     document.getElementById('barComplexity').style.width = activeAnalysis.trust_score.complexity_score + "%";
     document.getElementById('noteComplexity').textContent = activeAnalysis.trust_score.complexity_note;
 
-    document.getElementById('trustSummary').textContent = activeAnalysis.trust_score.trust_summary;
+    } catch (e) {
+      console.warn("⚠️ Minor UI population warning:", e);
+    }
 
     // ── Highlighting & Smart Reader Engine ─────────────────────────────
     
@@ -924,13 +978,13 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       // ── Step 1: Collect all items to highlight ──────────────────────
       const items = [];
       (activeAnalysis.hidden_traps || []).forEach(trap => {
-        if (trap.original_text && trap.original_text.trim().length > 8) {
-          items.push({ type: 'trap', id: trap.id, quote: trap.original_text, severity: trap.severity.toLowerCase() });
+        if (trap && trap.original_text && trap.original_text.trim().length > 8) {
+          items.push({ type: 'trap', id: trap.id, quote: trap.original_text, severity: (trap.severity || "warning").toLowerCase() });
         }
       });
       if (activeAnalysis.suspicious_clauses && activeAnalysis.suspicious_clauses.suspicious_items) {
         activeAnalysis.suspicious_clauses.suspicious_items.forEach(item => {
-          if (item.original_text && item.original_text.trim().length > 8) {
+          if (item && item.original_text && item.original_text.trim().length > 8) {
             items.push({ type: 'suspicious', id: item.id, quote: item.original_text, severity: 'high' });
           }
         });
@@ -1123,9 +1177,10 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
 
     // ── High-Fidelity Client-side PDF Exporter ─────────────────────────────
     window.exportHighlightReport = function() {
-      const btn = document.getElementById('exportReportBtn');
-      btn.innerHTML = '<span>⏳</span> Compiling...';
-      btn.disabled = true;
+      const btnTop = document.getElementById('exportReportBtn');
+      const btnReader = document.getElementById('exportReportBtnReader');
+      if (btnTop) { btnTop.innerHTML = '<span>⏳</span> Compiling...'; btnTop.disabled = true; }
+      if (btnReader) { btnReader.innerHTML = '<span>⏳</span> Compiling...'; btnReader.disabled = true; }
       
       // Get core info
       const info = activeAnalysis.core_info;
@@ -1134,51 +1189,53 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       const suspicious = activeAnalysis.suspicious_clauses.suspicious_items || [];
       const reality = activeAnalysis.reality_cost;
       
+      // Category specific labels for stats card
+      let stat1Label = "Principal Amount";
+      let stat2Label = "Interest Rate";
+      let stat3Label = "Monthly EMI / Premium";
+      let shockTitle = "🚨 Reality Cost Repayment Shock Statement";
+      let shockTotalLabel = "Total Repayment Amount";
+      let shockExtraLabel = "Total Extra Interest Cost";
+      
+      const docTypeLower = (info.loan_type || "").toLowerCase();
+      if (docTypeLower.includes("pet") || docTypeLower.includes("animal") || docTypeLower.includes("veterinary")) {
+        stat1Label = "Maximum Coverage Limit";
+        stat2Label = "Monthly Premium Rate";
+        stat3Label = "Monthly Premium Cost";
+        shockTitle = "🚨 Total Lifetime Premium Assessment";
+        shockTotalLabel = "Total Premium Commitment";
+        shockExtraLabel = "Estimated Co-payment exposure";
+      } else if (docTypeLower.includes("insurance") || docTypeLower.includes("policy")) {
+        stat1Label = "Overall Sum Insured";
+        stat2Label = "Monthly Premium Rate";
+        stat3Label = "Monthly Premium Cost";
+        shockTitle = "🚨 Total Lifetime Policy Cost Outlay";
+        shockTotalLabel = "Total Out-of-pocket Premium";
+        shockExtraLabel = "Estimated Co-payment exposure";
+      } else if (docTypeLower.includes("lease") || docTypeLower.includes("rental") || docTypeLower.includes("rent")) {
+        stat1Label = "Monthly Rental Rate";
+        stat2Label = "Security Deposit Amount";
+        stat3Label = "Monthly Commitment";
+        shockTitle = "🚨 Leasehold Total Cost of Occupancy";
+        shockTotalLabel = "Total Lease Duration Payments";
+        shockExtraLabel = "Deposit Holdback Exposure";
+      }
+      
       // Let's build a beautiful printable report content node dynamically
       const printArea = document.createElement('div');
       printArea.id = 'pdf-print-node';
       
-      // Assemble highlighted document text
-      let highlightedDoc = activeAnalysis.document_text || MOCK_DOC_TEXT;
-      highlightedDoc = highlightedDoc
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-        
-      traps.forEach(trap => {
-        const quote = trap.original_text;
-        if (quote && quote.trim().length > 10) {
-          const escapedQuote = quote.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          const index = highlightedDoc.indexOf(escapedQuote);
-          if (index !== -1) {
-            const replacement = `<span class="pdf-highlight severity-${trap.severity.toLowerCase()}">${escapedQuote}</span>`;
-            highlightedDoc = highlightedDoc.substring(0, index) + replacement + highlightedDoc.substring(index + escapedQuote.length);
-          }
-        }
-      });
-
-      suspicious.forEach(item => {
-        const quote = item.original_text;
-        if (quote && quote.trim().length > 10) {
-          const escapedQuote = quote.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          const index = highlightedDoc.indexOf(escapedQuote);
-          if (index !== -1) {
-            const replacement = `<span class="pdf-highlight severity-high">${escapedQuote}</span>`;
-            highlightedDoc = highlightedDoc.substring(0, index) + replacement + highlightedDoc.substring(index + escapedQuote.length);
-          }
-        }
-      });
-      
       // Generate traps table rows
       let trapRows = '';
       traps.forEach(trap => {
+        const severityStr = trap.severity ? trap.severity.toUpperCase() : "WARNING";
         trapRows += `
           <tr>
-            <td style="font-weight:700; color:#b91c1c;">[${trap.severity.toUpperCase()}] ${trap.title}</td>
-            <td style="font-family:monospace; font-size:10px;">"${trap.original_text.substring(0, 150)}..."</td>
-            <td>${trap.plain_explanation}</td>
-            <td style="color:#d97706; font-weight:600;">${trap.impact}</td>
-            <td style="color:#059669; font-weight:600;">${trap.advice}</td>
+            <td style="font-weight:700; color:#b91c1c; font-size:10px;">[${severityStr}] ${trap.title || "Hidden Clause"}</td>
+            <td style="font-family:monospace; font-size:9px; color:#475569;">"${(trap.original_text || "").substring(0, 160)}..."</td>
+            <td style="font-size:10px;">${trap.plain_explanation || ""}</td>
+            <td style="color:#d97706; font-weight:600; font-size:10px;">${trap.impact}</td>
+            <td style="color:#059669; font-weight:600; font-size:10px;">${trap.advice}</td>
           </tr>
         `;
       });
@@ -1188,15 +1245,118 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       suspicious.forEach(item => {
         suspiciousRows += `
           <tr>
-            <td style="font-weight:700; color:#ea580c;">${item.flag}</td>
-            <td style="font-family:monospace; font-size:10px;">"${item.original_text.substring(0, 120)}..."</td>
-            <td>${item.reason}</td>
-            <td>${item.industry_standard}</td>
+            <td style="font-weight:700; color:#ea580c; font-size:10px;">${item.flag || "Suspicious Clause"}</td>
+            <td style="font-family:monospace; font-size:9px; color:#475569;">"${(item.original_text || "").substring(0, 140)}..."</td>
+            <td style="font-size:10px;">${item.reason}</td>
+            <td style="font-size:10px;">${item.industry_standard}</td>
           </tr>
         `;
       });
       
       printArea.innerHTML = `
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+          
+          .pdf-print-container {
+            font-family: 'Inter', sans-serif;
+            color: #0f172a;
+            background: #ffffff;
+            padding: 40px;
+            box-sizing: border-box;
+          }
+          
+          .pdf-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+          }
+          
+          .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+          }
+          
+          .pdf-title-brand {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1e3a8a;
+          }
+          
+          .pdf-section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-top: 0;
+            margin-bottom: 12px;
+            border-left: 4px solid #3b82f6;
+            padding-left: 8px;
+          }
+          
+          .pdf-grid-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+          }
+          
+          .pdf-stat-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+          }
+          
+          .pdf-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 600;
+            margin-bottom: 6px;
+          }
+          
+          .pdf-stat-val {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          
+          .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10px;
+          }
+          
+          .pdf-table th {
+            background: #f1f5f9;
+            color: #475569;
+            font-weight: 700;
+            text-align: left;
+            padding: 10px;
+            border-bottom: 2px solid #e2e8f0;
+          }
+          
+          .pdf-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            vertical-align: top;
+            line-height: 1.5;
+          }
+          
+          .pdf-footer {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+            margin-top: 30px;
+            text-align: center;
+            font-size: 9px;
+            color: #64748b;
+          }
+        </style>
+        
         <div class="pdf-print-container">
           <!-- Page 1: Premium Cover Page -->
           <div style="height: 1020px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #e2e8f0; padding: 60px; border-radius:12px; margin-bottom: 40px; box-sizing: border-box;">
@@ -1217,7 +1377,7 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
                 Executive Risk Audit &amp;<br>Clause Analysis
               </h1>
               <p style="color: #475569; font-size: 14px; margin-top: 16px; max-width: 500px; line-height: 1.6;">
-                This executive audit exposes hidden penalties, rate revision clauses, unilateral structural biases, and total real-world amortization impact.
+                This executive audit exposes hidden penalties, exclusions, unilateral structural biases, and total real-world amortization impact.
               </p>
             </div>
             
@@ -1246,110 +1406,105 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
           </div>
           
           <!-- Page 2: Executive Summary & Financial Amortization Audit -->
-          <div class="pdf-section" style="page-break-before: always;">
-            <div class="pdf-header">
-              <span class="pdf-title-brand">🔍 LoanLens AI</span>
-              <span style="font-size: 10px; color:#64748b; font-weight: 600;">EXECUTIVE DASHBOARD</span>
-            </div>
-            
-            <div class="pdf-section">
-              <h3 class="pdf-section-title">🔍 Executive Summary</h3>
-              <p style="font-size: 12px; line-height: 1.7; color: #334155;">
-                ${info.summary}
-              </p>
-            </div>
-            
-            <div class="pdf-section">
-              <h3 class="pdf-section-title">📊 Key Repayment Parameters</h3>
-              <div class="pdf-grid-stats">
-                <div class="pdf-stat-box">
-                  <div class="pdf-stat-label">Principal Amount</div>
-                  <div class="pdf-stat-val">${info.loan_amount}</div>
+          <div class="pdf-section" style="page-break-before: always; height: 1020px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding-top: 20px;">
+            <div>
+              <div class="pdf-header">
+                <span class="pdf-title-brand">🔍 LoanLens AI</span>
+                <span style="font-size: 10px; color:#64748b; font-weight: 600;">EXECUTIVE DASHBOARD</span>
+              </div>
+              
+              <div class="pdf-section">
+                <h3 class="pdf-section-title">🔍 Executive Summary</h3>
+                <p style="font-size: 12px; line-height: 1.7; color: #334155;">
+                  ${info.summary}
+                </p>
+              </div>
+              
+              <div class="pdf-section">
+                <h3 class="pdf-section-title">📊 Key Repayment Parameters</h3>
+                <div class="pdf-grid-stats">
+                  <div class="pdf-stat-box">
+                    <div class="pdf-stat-label">${stat1Label}</div>
+                    <div class="pdf-stat-val">${info.loan_amount}</div>
+                  </div>
+                  <div class="pdf-stat-box">
+                    <div class="pdf-stat-label">${stat2Label}</div>
+                    <div class="pdf-stat-val">${info.interest_rate}</div>
+                  </div>
+                  <div class="pdf-stat-box">
+                    <div class="pdf-stat-label">${stat3Label}</div>
+                    <div class="pdf-stat-val">${info.emi_amount}</div>
+                  </div>
                 </div>
-                <div class="pdf-stat-box">
-                  <div class="pdf-stat-label">Interest Rate</div>
-                  <div class="pdf-stat-val">${info.interest_rate}</div>
+              </div>
+              
+              <div class="pdf-section">
+                <h3 class="pdf-section-title">${shockTitle}</h3>
+                <div style="background: #fef2f2; border: 1px dashed #ef4444; border-radius: 8px; padding: 20px; font-size: 12px; line-height: 1.6; color: #991b1b; font-weight: 700;">
+                  📢 ${reality.shock_statement}
                 </div>
-                <div class="pdf-stat-box">
-                  <div class="pdf-stat-label">Monthly EMI / Premium</div>
-                  <div class="pdf-stat-val">${info.emi_amount}</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
+                  <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                    <span style="font-size: 9px; text-transform:uppercase; color:#64748b; display:block; font-weight:600;">${shockTotalLabel}</span>
+                    <span style="font-size:18px; font-weight:800; color:#0f172a;">₹${reality.total_payment.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                    <span style="font-size: 9px; text-transform:uppercase; color:#64748b; display:block; font-weight:600;">${shockExtraLabel}</span>
+                    <span style="font-size:18px; font-weight:800; color:#b91c1c;">₹${reality.total_interest.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
               </div>
             </div>
             
-            <div class="pdf-section">
-              <h3 class="pdf-section-title">🚨 Reality Cost Repayment Shock Statement</h3>
-              <div style="background: #fef2f2; border: 1px dashed #ef4444; border-radius: 8px; padding: 20px; font-size: 12px; line-height: 1.6; color: #991b1b; font-weight: 700;">
-                📢 ${reality.shock_statement}
-              </div>
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px;">
-                <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-                  <span style="font-size: 9px; text-transform:uppercase; color:#64748b; display:block; font-weight:600;">Total Repayment Amount</span>
-                  <span style="font-size:18px; font-weight:800; color:#0f172a;">₹${reality.total_payment.toLocaleString('en-IN')}</span>
-                </div>
-                <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
-                  <span style="font-size: 9px; text-transform:uppercase; color:#64748b; display:block; font-weight:600;">Total Extra Interest Cost</span>
-                  <span style="font-size:18px; font-weight:800; color:#b91c1c;">₹${reality.total_interest.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
+            <div class="pdf-footer">
+              <p>CONFIDENTIAL &bull; Generated dynamically by LoanLens AI &copy; 2026. Page 2 of 3</p>
             </div>
           </div>
           
-          <!-- Page 3: Highlighted Document Reader -->
-          <div class="pdf-section" style="page-break-before: always;">
-            <div class="pdf-header">
-              <span class="pdf-title-brand">🔍 LoanLens AI</span>
-              <span style="font-size: 10px; color:#64748b; font-weight: 600;">HIGHLIGHTED AGREEMENT STREAM</span>
-            </div>
-            <h3 class="pdf-section-title">📖 Highlighted Key Clauses</h3>
-            <p style="font-size: 10px; color: #64748b; margin-bottom: 12px;">The following text showcases the original agreement with dynamic, color-coded highlights representing critical risk zones.</p>
-            <div class="pdf-doc-body">
-              ${highlightedDoc}
-            </div>
-          </div>
-
-          <!-- Page 4: Negotiation Table (Appendix) -->
-          <div class="pdf-section" style="page-break-before: always;">
-            <div class="pdf-header">
-              <span class="pdf-title-brand">🔍 LoanLens AI</span>
-              <span style="font-size: 10px; color:#64748b; font-weight: 600;">NEGOTIATION APPENDIX</span>
-            </div>
-            
-            <h3 class="pdf-section-title">⚠️ Actionable Hidden Traps Appendix</h3>
-            <table class="pdf-table">
-              <thead>
-                <tr>
-                  <th style="width:20%;">Trap / Clause</th>
-                  <th style="width:20%;">Contract Phrase</th>
-                  <th style="width:20%;">Plain Translation</th>
-                  <th style="width:20%;">Financial Risk</th>
-                  <th style="width:20%;">Actionable Move</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${trapRows}
-              </tbody>
-            </table>
-
-            ${suspicious.length > 0 ? `
-              <h3 class="pdf-section-title" style="margin-top: 35px;">🕵️ AI Fraud &amp; Administrative Concern Alerts</h3>
+          <!-- Page 3: Negotiation Table (Appendix) -->
+          <div class="pdf-section" style="page-break-before: always; min-height: 1020px; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding-top: 20px;">
+            <div>
+              <div class="pdf-header">
+                <span class="pdf-title-brand">🔍 LoanLens AI</span>
+                <span style="font-size: 10px; color:#64748b; font-weight: 600;">NEGOTIATION APPENDIX</span>
+              </div>
+              
+              <h3 class="pdf-section-title">⚠️ Actionable Hidden Traps Appendix</h3>
               <table class="pdf-table">
                 <thead>
                   <tr>
-                    <th style="width:25%;">Flag Name</th>
-                    <th style="width:25%;">Original Contract Text</th>
-                    <th style="width:25%;">Threat Logic</th>
-                    <th style="width:25%;">Industry Standard Benchmark</th>
+                    <th style="width:20%;">Trap / Clause</th>
+                    <th style="width:20%;">Contract Phrase</th>
+                    <th style="width:20%;">Plain Translation</th>
+                    <th style="width:20%;">Financial Risk</th>
+                    <th style="width:20%;">Actionable Move</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${suspiciousRows}
+                  ${trapRows}
                 </tbody>
               </table>
-            ` : ''}
+
+              ${suspicious.length > 0 ? `
+                <h3 class="pdf-section-title" style="margin-top: 35px;">🕵️ AI Administrative Concern Alerts</h3>
+                <table class="pdf-table">
+                  <thead>
+                    <tr>
+                      <th style="width:25%;">Flag Name</th>
+                      <th style="width:25%;">Original Contract Text</th>
+                      <th style="width:25%;">Threat Logic</th>
+                      <th style="width:25%;">Industry Standard Benchmark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${suspiciousRows}
+                  </tbody>
+                </table>
+              ` : ''}
+            </div>
 
             <div class="pdf-footer">
-              <p>CONFIDENTIAL &bull; Generated dynamically by LoanLens AI &copy; 2026. All rights reserved.</p>
+              <p>CONFIDENTIAL &bull; Generated dynamically by LoanLens AI &copy; 2026. Page 3 of 3</p>
               <p style="font-size:8px; margin-top:4px;">Disclaimer: This document is an automated analysis tool. Use details to consult professional legal counsel before executing contract signatures.</p>
             </div>
           </div>
@@ -1359,8 +1514,8 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       document.body.appendChild(printArea);
       
       const opt = {
-        margin:       10,
-        filename:     `${activeAnalysis.filename.replace('.pdf', '')}_LoanLens_Audit_Report.pdf`,
+        margin:       0,
+        filename:     `${(activeAnalysis.filename || "Document").replace('.pdf', '')}_LoanLens_Audit_Report.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -1369,14 +1524,14 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
       
       html2pdf().set(opt).from(printArea).save().then(() => {
         printArea.remove();
-        btn.innerHTML = '<span>📥</span> Export Highlighted PDF Report';
-        btn.disabled = false;
+        if (btnTop) { btnTop.innerHTML = '<span>📥</span> Download PDF Report'; btnTop.disabled = false; }
+        if (btnReader) { btnReader.innerHTML = '<span>📥</span> Download PDF Report'; btnReader.disabled = false; }
         toast('🎉 PDF Audit Report downloaded successfully!', 'success');
       }).catch(err => {
         console.error("PDF generation crash: ", err);
         printArea.remove();
-        btn.innerHTML = '<span>📥</span> Export Highlighted PDF Report';
-        btn.disabled = false;
+        if (btnTop) { btnTop.innerHTML = '<span>📥</span> Download PDF Report'; btnTop.disabled = false; }
+        if (btnReader) { btnReader.innerHTML = '<span>📥</span> Download PDF Report'; btnReader.disabled = false; }
         toast('❌ PDF generation failed. Try again!', 'error');
       });
     }
