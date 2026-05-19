@@ -188,11 +188,11 @@ def get_mock_json_response(prompt: str) -> str:
         return '\u20b9' + ','.join(groups) + ',' + last3
 
     # Dynamic universal name extraction
-    l_match = re.search(r'(?:lender|bank|financial institution|lessor|landlord|insurer|provider|company)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,]{3,50})', doc_text, re.IGNORECASE)
+    l_match = re.search(r'(?:lender|bank|financial institution|lessor|landlord|insurer|provider|company|organization|organisation|corporation|cooperative|association|trust|society|firm|agency|party|financier|underwriter)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z0-9 \.,]{3,50})', doc_text, re.IGNORECASE)
     if l_match:
         lender_name = l_match.group(1).split('\n')[0].strip()
     else:
-        bank_match = re.search(r'([A-Za-z0-9 \.\-]+?\b(?:Bank|Lender|Cooperative|Financier|Funding|Credit|Finance|Insurance|Assurance|Health|Mutual|Protection|Realty|Realtors|Group|Estates|Landlord)\b)', doc_text, re.IGNORECASE)
+        bank_match = re.search(r'([A-Za-z0-9 \.\-]+?\b(?:Bank|Lender|Cooperative|Financier|Funding|Credit|Finance|Insurance|Assurance|Health|Mutual|Protection|Realty|Realtors|Group|Estates|Landlord|Company|Corp|Corporation|Organisation|Organization|Firm|Agency|Society|Association|Trust|Limited|Ltd|LLC|Inc)\b)', doc_text, re.IGNORECASE)
         if bank_match:
             lender_name = bank_match.group(1).strip()
 
