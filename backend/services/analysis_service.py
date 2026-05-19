@@ -32,14 +32,14 @@ def perform_master_analysis(document_text: str) -> dict:
     # Compress multiple consecutive newlines
     cleaned_text = re.sub(r'\n+', '\n', cleaned_text)
     
-    # Intelligent dual-end sampling for massive documents (over 120,000 chars)
+    # Intelligent dual-end sampling for massive documents (under 8,000 tokens limit)
     # This keeps core info from the start and exclusions/penalties from the end,
-    # discarding middle boilerplate to prevent API timeouts or payload limits.
-    if len(cleaned_text) <= 120000:
+    # discarding middle boilerplate to prevent HTTP 413 payload limits.
+    if len(cleaned_text) <= 18000:
         safe_text = cleaned_text
     else:
-        first_part = cleaned_text[:40000]
-        last_part = cleaned_text[-70000:]
+        first_part = cleaned_text[:8000]
+        last_part = cleaned_text[-9000:]
         safe_text = (
             first_part + 
             "\n\n--- [LOANLENS SYSTEM: Middle Boilerplate Omitted for Context Optimization] ---\n\n" + 

@@ -44,8 +44,8 @@ def chat_with_ai():
     if doc_id:
         try:
             raw_context = get_document_text(doc_id)
-            if len(raw_context) > 24000:
-                doc_context = raw_context[:12000] + "\n\n... [Boilerplate omitted for context optimization] ...\n\n" + raw_context[-12000:]
+            if len(raw_context) > 16000:
+                doc_context = raw_context[:8000] + "\n\n... [Boilerplate omitted for context optimization] ...\n\n" + raw_context[-8000:]
             else:
                 doc_context = raw_context
         except Exception:

@@ -540,7 +540,12 @@ def get_mock_json_response(prompt: str) -> str:
     # We construct highly targeted hidden traps by scanning actual document text
     # for verbatim quotes matching the detected category.
     if category == "Pet":
-        summary = f"This {lender_name} Pet Policy covers basic veterinary healthcare up to {loan_amount}. However, it contains typical breed-specific congenital exclusions, pre-existing health exclusions, and reserves the right to increase monthly premiums unilaterally."
+        summary = (
+            f"This comprehensive Pet Assurance Policy from {lender_name} establishes a total coverage limit of {loan_amount} with an active premium rate of {interest_rate} ({interest_type}). "
+            f"While it offers standard veterinary care coverage for regular illness and injury, it includes strict breed-specific joint exclusions and a high 15-day pre-existing condition exclusionary window. "
+            f"Furthermore, any medical history discrepancies reported by your vet can completely void active claim payments. "
+            f"Pet owners should ensure a veterinary health certificate is cleared prior to coverage inception to safeguard against denied claims."
+        )
         
         q1 = find_verbatim_quote(["condition", "exclude"], "Pre-existing veterinary health conditions or chronic illnesses prior to policy registration are strictly excluded from all coverages.")
         q2 = find_verbatim_quote(["hereditary", "exclude"], "Hereditary conditions, structural joint issues, and congenital pet defects are not subject to basic premium reimbursements.")
@@ -594,10 +599,10 @@ def get_mock_json_response(prompt: str) -> str:
 
         if insurance_sub_type == "Auto Insurance":
             summary = (
-                f"This comprehensive motor policy from {lender_name} offers a coverage sum of {loan_amount} for own damage and third-party liabilities. "
-                f"Crucially, it enforces a steep depreciation schedule on plastic, nylon, and rubber components, meaning you will face up to 50% out-of-pocket costs for parts during repairs. "
-                f"Additionally, cashless repairs are strictly limited to network garages, and minor independent claims are subject to a high compulsory deductible excess. "
-                f"Always consult network locations before filing a claim to avoid coverage reductions."
+                f"This comprehensive Auto Insurance Policy from {lender_name} details a total Sum Insured cover limit of {loan_amount} against collision damages, third-party liability, and structural losses. "
+                f"Crucially, the contract outlines a steep mandatory 50% parts depreciation schedule on nylon, plastic, and rubber components replaced during accident repair claims. "
+                f"Furthermore, cashless claims are strictly restricted to network garages, and minor independent repairs are subject to a compulsory deductible excess. "
+                f"We strongly advise checking nearby network garage locations before filing a claim, or upgrading to a Zero-Depreciation add-on rider."
             )
             
             q1 = find_verbatim_quote(["depreciation", "percent"], "Depreciation rates of up to 50% shall apply on nylon, plastic, rubber parts and batteries replaced during vehicle repair claims.")
@@ -638,10 +643,10 @@ def get_mock_json_response(prompt: str) -> str:
 
         elif insurance_sub_type == "Life Insurance":
             summary = (
-                f"This premium term life policy from {lender_name} secures a death benefit payout of {loan_amount} for your designated nominees. "
-                f"However, it contains a critical absolute disclosure warranty where any minor omission or history mismatch can fully void the policy. "
-                f"Furthermore, self-harm and suicide exclusions strictly apply for the first 12 months, and early policy surrenders prior to year 3 incur steep 100% forfeitures. "
-                f"Ensure absolute medical history accuracy when filling out proposal forms to protect your family's future."
+                f"This term Life Insurance Agreement from {lender_name} secures a high-value death benefit cover of {loan_amount} for your designated nominees and families. "
+                f"Crucially, the agreement places an absolute disclosure warranty on the policyholder: any minor discrepancy in medical habits or checkup history completely voids active coverage. "
+                f"Additionally, self-harm and suicide exclusions apply during the initial 12 months, and policy cancellations prior to year 3 yield zero surrender value with absolute forfeiture of premiums. "
+                f"We recommend filling out proposal forms with total accuracy to prevent claims voidance."
             )
             
             q1 = find_verbatim_quote(["disclosure", "declare"], "Any material misrepresentation, omission, or non-declaration of pre-existing health habits will render this policy void ab initio.")
@@ -682,10 +687,10 @@ def get_mock_json_response(prompt: str) -> str:
 
         elif insurance_sub_type == "Property Insurance":
             summary = (
-                f"This structural property policy from {lender_name} covers dwelling structure damages up to {loan_amount} against fire and basic hazards. "
-                f"However, it mandates the lending bank as the primary beneficiary, meaning claim settlements go directly to clearing your outstanding mortgage balance rather than providing you with construction funds. "
-                f"Additionally, it strictly excludes damage from earth shifts, subsidence, or landslides, and applies a compounding building-age depreciation factor. "
-                f"Check with the bank to establish rebuilding escrows before finalizing."
+                f"This structural Property Insurance Policy from {lender_name} protects your dwelling against fire, lightning, and explosion hazards up to a cover limit of {loan_amount}. "
+                f"Crucially, the contract designates the lending bank as the primary sole beneficiary, meaning any claims settlement will directly clear outstanding mortgage balances instead of providing you with construction funds. "
+                f"Additionally, the policy excludes all geological damages (earth shift, landslide, erosion) and applies a compounding building-age depreciation of 2.5% annually. "
+                f"Always consult your lender to establish a joint escrow agreement for rebuilding."
             )
             
             q1 = find_verbatim_quote(["beneficiary", "bank"], "In the event of structural damage, all claim proceeds shall be paid directly to the lending bank named as primary beneficiary.")
@@ -726,10 +731,10 @@ def get_mock_json_response(prompt: str) -> str:
 
         else: # Health Insurance (Default)
             summary = (
-                f"This premium health insurance policy from {lender_name} establishes a Sum Insured of {loan_amount} for primary hospitalizations. "
-                f"However, it contains a critical mandatory 20% co-payment clause on specialized treatments and a strict 1% room rent sub-limit that can lead to large proportional deduction fees. "
-                f"Additionally, a long 36-month waiting period applies to chronic conditions like diabetes and hypertension before they are fully covered. "
-                f"Review network hospitals and ward types carefully to minimize out-of-pocket exposure."
+                f"This premium Health Insurance Policy from {lender_name} establishes a primary hospitalization Sum Insured of {loan_amount} with an annual premium of {interest_rate}. "
+                f"Crucially, the contract outlines a highly restrictive 20% mandatory co-payment on all specialized surgery treatments and hospitalizations. "
+                f"Furthermore, hospital room rent charges are capped at a strict daily sub-limit of 1% of the Sum Insured, and a lengthy 36-month waiting period applies to chronic conditions like diabetes and hypertension. "
+                f"Always request ward room types within the sub-limit or negotiate a 0% co-payment upgrade rider."
             )
             
             q1 = find_verbatim_quote(["co-payment", "share"], "The insured agrees to a mandatory co-payment ratio of 20% on all specialized surgery treatments and hospitalizations.")
@@ -769,7 +774,12 @@ def get_mock_json_response(prompt: str) -> str:
             flag_orig = q2
 
     elif category == "Lease":
-        summary = f"This residential lease from {lender_name} specifies a monthly rental rate of {loan_amount} with a {interest_rate}. However, it contains unilateral 7-day landlord evictions, automatic uncapped rent escalations, and highly aggressive security deposit wear-and-tear deductions."
+        summary = (
+            f"This residential lease agreement from {lender_name} outlines a fixed monthly rental rate of {loan_amount} alongside a security deposit of {interest_rate} for the specified premises. "
+            f"Crucially, the contract enforces multiple highly tenant-unfavorable clauses, including a unilateral 7-day landlord eviction notice and automatic uncapped rent hikes of 12% upon renewal. "
+            f"Additionally, uncapped security deposit deductions are allowed for general maintenance and standard repainting wear-and-tear. "
+            f"We strongly advise negotiating to cap rent escalations at 5% and requiring a standard 30-day eviction notice period."
+        )
         
         q1 = find_verbatim_quote(["terminate", "notice"], "The Landlord may terminate this lease agreement and demand immediate premises possession upon giving a 7-day written notice.")
         q2 = find_verbatim_quote(["deposit", "deduct"], "The security deposit shall be refunded after deducting uncapped fees for general maintenance, painting, and wear-and-tear.")
@@ -808,7 +818,12 @@ def get_mock_json_response(prompt: str) -> str:
         flag_orig = q2
 
     else: # Loan
-        summary = f"This Home Loan contract from {lender_name} provides {loan_amount} at {interest_rate}. However, it enforces uncapped floating benchmark resets, substantial penal compound interest rates on defaults, and uncapped exit prepayment charges."
+        summary = (
+            f"This financial Home Loan agreement from {lender_name} establishes a primary principal sanction limit of {loan_amount} at an interest rate of {interest_rate} ({interest_type}). "
+            f"Crucially, the bank enforces multiple highly restrictive borrower clauses, including an uncapped unilateral floating margin adjustment right that allows rate hikes at sole discretion. "
+            f"Additionally, default EMI arrears attract a compounding 2% monthly penal interest rate, and early prepayments or bank transfers are subject to a steep 2% exit foreclosure charge. "
+            f"Borrowers should negotiate a floating rate cap and request a waiver of exit charges after the third year of active repayment."
+        )
         
         q1 = find_verbatim_quote(["margin", "sole discretion"], "The Lender reserves the absolute right to revise the benchmark rate spread from time to time at its sole discretion.")
         q2 = find_verbatim_quote(["penal", "default"], "Any default in payment of EMI will attract additional interest at 2% per month compounded on outstanding arrears.")
