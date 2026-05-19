@@ -920,51 +920,152 @@ IN WITNESS WHEREOF, the parties hereto have set their hands the day and year fir
 
     function initializeSmartReader() {
       let docText = activeAnalysis.document_text || MOCK_DOC_TEXT;
-      
-      // Sanitizing text
-      let escapedText = docText
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-        
-      // Match and highlight hidden traps
-      activeAnalysis.hidden_traps.forEach((trap) => {
-        const quote = trap.original_text;
-        if (quote && quote.trim().length > 10) {
-          const escapedQuote = quote
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
-            
-          const index = escapedText.indexOf(escapedQuote);
-          if (index !== -1) {
-            const replacement = `<mark class="highlight-mark severity-${trap.severity.toLowerCase()}" onclick="inspectTrap(${trap.id})">${escapedQuote}</mark>`;
-            escapedText = escapedText.substring(0, index) + replacement + escapedText.substring(index + escapedQuote.length);
-          }
+
+      // ── Step 1: Collect all items to highlight ──────────────────────
+      const items = [];
+      (activeAnalysis.hidden_traps || []).forEach(trap => {
+        if (trap.original_text && trap.original_text.trim().length > 8) {
+          items.push({ type: 'trap', id: trap.id, quote: trap.original_text, severity: trap.severity.toLowerCase() });
         }
       });
-      
-      // Match and highlight suspicious clauses
       if (activeAnalysis.suspicious_clauses && activeAnalysis.suspicious_clauses.suspicious_items) {
-        activeAnalysis.suspicious_clauses.suspicious_items.forEach((item) => {
-          const quote = item.original_text;
-          if (quote && quote.trim().length > 10) {
-            const escapedQuote = quote
-              .replace(/&/g, "&amp;")
-              .replace(/</g, "&lt;")
-              .replace(/>/g, "&gt;");
-              
-            const index = escapedText.indexOf(escapedQuote);
-            if (index !== -1) {
-              const replacement = `<mark class="highlight-mark severity-high" onclick="inspectSuspicious(${item.id})">${escapedQuote}</mark>`;
-              escapedText = escapedText.substring(0, index) + replacement + escapedText.substring(index + escapedQuote.length);
-            }
+        activeAnalysis.suspicious_clauses.suspicious_items.forEach(item => {
+          if (item.original_text && item.original_text.trim().length > 8) {
+            items.push({ type: 'suspicious', id: item.id, quote: item.original_text, severity: 'high' });
           }
         });
       }
-      
-      document.getElementById('readerDocPane').innerHTML = escapedText;
+
+      // ── Step 2: Normalizer (collapses whitespace, lowercases) ────────
+      function normalize(s) {
+        return s.replace(/\s+/g, ' ').replace(/[""'']/g, '"').replace(/[–—]/g, '-').trim().toLowerCase();
+      }
+
+      // ── Step 3: Fuzzy substring finder ──────────────────────────────
+      // Tries exact → 80-char sliding window of keywords → 40-char phrase match
+      function findBestMatch(doc, quote) {
+        const normDoc   = normalize(doc);
+        const normQuote = normalize(quote);
+
+        // (a) Exact normalized match
+        const exactIdx = normDoc.indexOf(normQuote);
+        if (exactIdx !== -1) {
+          return { start: exactIdx, end: exactIdx + normQuote.length };
+        }
+
+        // (b) Try longest unbroken phrase >= 40 chars
+        const words = normQuote.split(' ');
+        for (let len = words.length; len >= 4; len--) {
+          for (let start = 0; start <= words.length - len; start++) {
+            const phrase = words.slice(start, start + len).join(' ');
+            if (phrase.length < 40) continue;
+            const idx = normDoc.indexOf(phrase);
+            if (idx !== -1) return { start: idx, end: idx + phrase.length };
+          }
+        }
+
+        // (c) Try first 10 words
+        const shortPhrase = words.slice(0, 10).join(' ');
+        const shortIdx = normDoc.indexOf(shortPhrase);
+        if (shortIdx !== -1) return { start: shortIdx, end: shortIdx + shortPhrase.length };
+
+        return null;
+      }
+
+      // ── Step 4: Map normalized indices back to original doc ─────────
+      // Build a normIdx→origIdx map by scanning character by character
+      function buildIndexMap(orig) {
+        const map = []; // map[normPos] = origPos
+        let normPos = 0;
+        let i = 0;
+        while (i < orig.length) {
+          const ch = orig[i];
+          // Collapse whitespace runs as one space in normalized
+          if (/\s/.test(ch)) {
+            if (normPos === 0 || map[normPos - 1] !== undefined) {
+              map[normPos] = i;
+              normPos++;
+            }
+            // Skip remaining whitespace
+            while (i < orig.length && /\s/.test(orig[i])) i++;
+          } else {
+            // lower-case single char mapping
+            map[normPos] = i;
+            normPos++;
+            i++;
+          }
+        }
+        map[normPos] = orig.length; // sentinel
+        return map;
+      }
+
+      // ── Step 5: Build highlighted HTML ──────────────────────────────
+      const indexMap  = buildIndexMap(docText);
+      const normDoc   = normalize(docText);
+
+      // Collect all match ranges, sorted by start
+      const ranges = [];
+      items.forEach(item => {
+        const match = findBestMatch(docText, item.quote);
+        if (match) {
+          const origStart = indexMap[match.start] ?? match.start;
+          const origEnd   = indexMap[match.end]   ?? match.end;
+          ranges.push({ origStart, origEnd, item });
+        }
+      });
+
+      // Sort by start position, remove overlaps
+      ranges.sort((a, b) => a.origStart - b.origStart);
+      const clean = [];
+      let lastEnd = 0;
+      ranges.forEach(r => {
+        if (r.origStart >= lastEnd) {
+          clean.push(r);
+          lastEnd = r.origEnd;
+        }
+      });
+
+      // ── Step 6: Build final HTML string ─────────────────────────────
+      function esc(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+      let html = '';
+      let cursor = 0;
+      clean.forEach(r => {
+        html += esc(docText.slice(cursor, r.origStart));
+        const snippet = esc(docText.slice(r.origStart, r.origEnd));
+        const cb = r.item.type === 'trap'
+          ? `inspectTrap(${r.item.id})`
+          : `inspectSuspicious(${r.item.id})`;
+        html += `<mark class="highlight-mark severity-${r.item.severity}" onclick="${cb}" title="Click to inspect">${snippet}</mark>`;
+        cursor = r.origEnd;
+      });
+      html += esc(docText.slice(cursor));
+
+      // ── Step 7: Wrap in styled pre-wrap container ────────────────────
+      const matchCount = clean.length;
+      const totalItems = items.length;
+      const noticeHtml = totalItems > 0
+        ? `<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:16px; padding:10px 14px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); border-left:3px solid var(--blue);">
+             📍 <strong>${matchCount} of ${totalItems}</strong> AI-identified clauses located &amp; highlighted in this document.
+             ${matchCount < totalItems ? `<span style="color:var(--amber)"> ${totalItems - matchCount} clause(s) not found verbatim (AI paraphrased or OCR mismatch).</span>` : ''}
+           </div>`
+        : '';
+
+      // Color legend
+      const legendHtml = `
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:0.78rem; font-weight:600;">
+          <span><mark class="highlight-mark severity-critical" style="pointer-events:none;">■</mark> Critical</span>
+          <span><mark class="highlight-mark severity-high" style="pointer-events:none;">■</mark> High</span>
+          <span><mark class="highlight-mark severity-medium" style="pointer-events:none;">■</mark> Medium</span>
+          <span><mark class="highlight-mark severity-low" style="pointer-events:none;">■</mark> Low Risk</span>
+        </div>`;
+
+      document.getElementById('readerDocPane').innerHTML =
+        legendHtml + noticeHtml +
+        `<div style="white-space:pre-wrap; font-size:0.92rem; line-height:1.85;">${html}</div>`;
     }
+
     
     // Inspect specific trap on reader click
     window.inspectTrap = function(id) {
