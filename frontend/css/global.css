@@ -205,6 +205,13 @@ p  { color: var(--text-secondary); }
 .btn-success { background: var(--grad-safe); color: #fff; }
 .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
 
+@keyframes pulseGlow {
+  0%,100% { box-shadow: 0 4px 20px rgba(79,142,247,0.3); }
+  50%      { box-shadow: 0 6px 32px rgba(79,142,247,0.6), 0 0 16px rgba(79,142,247,0.4); }
+}
+.animate-pulse-glow { animation: pulseGlow 2.5s ease-in-out infinite; }
+.animate-pulse-glow:disabled { animation: none; }
+
 /* ── Badges ─────────────────────────────────────────────── */
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
@@ -460,3 +467,225 @@ body { top: 0 !important; }
 .skiptranslate iframe { display: none !important; }
 #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
 .goog-text-highlight { background: none !important; box-shadow: none !important; }
+
+/* ============================================================
+   LoanLens AI — Interactive Reader & Highlighting Styles
+   ============================================================ */
+
+/* Document Reader Split Pane Layout */
+.reader-container {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 24px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .reader-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.reader-doc-pane {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-height: 700px;
+  overflow-y: auto;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  position: relative;
+}
+
+.reader-sidebar-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Beautiful Interactive Mark Highlights */
+.highlight-mark {
+  background-color: var(--highlight-bg, rgba(79, 142, 247, 0.2));
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--highlight-border, var(--blue));
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+}
+
+.highlight-mark:hover {
+  background-color: var(--highlight-bg-hover, rgba(79, 142, 247, 0.3));
+  box-shadow: 0 0 12px var(--highlight-glow, rgba(79, 142, 247, 0.25));
+}
+
+/* Severity Theme Variables */
+.highlight-mark.severity-critical {
+  --highlight-bg: rgba(239, 68, 68, 0.18);
+  --highlight-bg-hover: rgba(239, 68, 68, 0.28);
+  --highlight-border: var(--red);
+  --highlight-glow: rgba(239, 68, 68, 0.35);
+}
+
+.highlight-mark.severity-high {
+  --highlight-bg: rgba(249, 115, 22, 0.18);
+  --highlight-bg-hover: rgba(249, 115, 22, 0.28);
+  --highlight-border: var(--orange);
+  --highlight-glow: rgba(249, 115, 22, 0.35);
+}
+
+.highlight-mark.severity-medium {
+  --highlight-bg: rgba(245, 158, 11, 0.18);
+  --highlight-bg-hover: rgba(245, 158, 11, 0.28);
+  --highlight-border: var(--amber);
+  --highlight-glow: rgba(245, 158, 11, 0.35);
+}
+
+.highlight-mark.severity-low {
+  --highlight-bg: rgba(16, 185, 129, 0.18);
+  --highlight-bg-hover: rgba(16, 185, 129, 0.28);
+  --highlight-border: var(--green);
+  --highlight-glow: rgba(16, 185, 129, 0.35);
+}
+
+/* Glassmorphic Live Details Card on Sidebar */
+.reader-detail-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-card);
+  transition: all 0.3s ease;
+  min-height: 220px;
+}
+
+.reader-detail-card.active {
+  border-color: var(--border-accent);
+  box-shadow: var(--shadow-blue);
+}
+
+/* PDF Export Print Template Styling */
+.pdf-print-container {
+  padding: 40px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: 'Inter', sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.pdf-header {
+  border-bottom: 2px solid #3b82f6;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pdf-title-brand {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.pdf-section {
+  margin-bottom: 30px;
+}
+
+.pdf-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e3a8a;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pdf-grid-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.pdf-stat-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 15px;
+  text-align: center;
+}
+
+.pdf-stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.pdf-stat-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.pdf-doc-body {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #334155;
+  white-space: pre-wrap;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.pdf-highlight {
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.pdf-highlight.severity-critical { background: #fee2e2; border-bottom: 2px solid #ef4444; color: #991b1b; }
+.pdf-highlight.severity-high     { background: #ffedd5; border-bottom: 2px solid #f97316; color: #9a3412; }
+.pdf-highlight.severity-medium   { background: #fef3c7; border-bottom: 2px solid #f59e0b; color: #92400e; }
+.pdf-highlight.severity-low      { background: #d1fae5; border-bottom: 2px solid #10b981; color: #065f46; }
+
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  font-size: 11px;
+}
+
+.pdf-table th, .pdf-table td {
+  border: 1px solid #e2e8f0;
+  padding: 10px;
+  text-align: left;
+}
+
+.pdf-table th {
+  background: #f1f5f9;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.pdf-footer {
+  text-align: center;
+  font-size: 10px;
+  color: #64748b;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 15px;
+  margin-top: 40px;
+}
+

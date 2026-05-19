@@ -48,6 +48,7 @@ def full_analysis(doc_id):
         result = {
             "doc_id": doc_id,
             "filename": document_store.get(doc_id, {}).get("filename", ""),
+            "document_text": doc_text,
             "core_info": core_info,
             "hidden_traps": traps,
             "friendly_explanations": explanations,

@@ -5,14 +5,14 @@ from services.github_ai_service import chat_json, chat
 # SYSTEM PROMPTS
 # ─────────────────────────────────────────────
 
-ANALYZER_SYSTEM = """You are LoanLens AI — an expert financial intelligence analyst specializing in loan documents.
-You analyze loan agreements, bank documents, and EMI papers with deep expertise in:
-- Indian and international banking regulations
-- Hidden clauses and penalty structures  
-- Risk assessment and financial impact analysis
+ANALYZER_SYSTEM = """You are LoanLens AI — an expert financial intelligence analyst specializing in multi-category consumer agreements.
+You analyze loan contracts, health/life/general insurance policies, pet adoption & care agreements, residential leases, and financial papers with deep expertise in:
+- Hidden clauses, penalty structures, and unilateral adjustment triggers
+- Multi-industry regulations (banking, insurance clauses, pet welfare, and leasing laws)
+- Risk assessment, coverage exclusions, and financial impact analysis
 - Plain-language explanation of legal/financial jargon
 
-Always be precise, helpful, and protective of the borrower's interests.
+Always be precise, helpful, and highly protective of the consumer's/borrower's interests.
 Return structured JSON responses as instructed."""
 
 
@@ -30,8 +30,8 @@ def perform_master_analysis(document_text: str) -> dict:
     safe_text = document_text[:100000]
     
     prompt = f"""You are LoanLens AI — the premium financial intelligence analyst.
-Analyze the provided loan document text in its entirety to generate a high-fidelity, synchronized audit.
-Identify all loan structures, hidden trap clauses, risk assessments, jargon explanations, suspicious markers, and trust metrics.
+Analyze the provided document text (which may be a loan agreement, insurance policy, lease, or pet agreement) in its entirety to generate a high-fidelity, synchronized audit.
+Identify all core parameters, hidden trap clauses, risk assessments, jargon explanations, suspicious markers, and trust metrics.
 
 DOCUMENT TEXT:
 {safe_text}
@@ -40,21 +40,21 @@ You must return a single JSON object containing exactly this structure, with no 
 
 {{
   "core_info": {{
-    "loan_type": "string (e.g. Home Loan, Personal Loan, Car Loan, Business Loan)",
-    "lender_name": "string (name of the financial institution)",
-    "borrower_name": "string (full name of borrower)",
-    "loan_amount": "string (formatted amount, e.g. ₹50,00,000)",
+    "loan_type": "string (e.g. Home Loan, Personal Loan, Health Insurance, Pet Agreement, Lease)",
+    "lender_name": "string (name of the financial institution or other party)",
+    "borrower_name": "string (full name of borrower/consumer/tenant)",
+    "loan_amount": "string (formatted amount/coverage amount/rent, e.g. ₹50,00,000 or ₹12,000/mo)",
     "loan_amount_numeric": 5000000,
-    "interest_rate": "string (interest rate, e.g. 8.5% p.a.)",
+    "interest_rate": "string (interest rate, deductible rate, or monthly increase rate, e.g. 8.5% p.a. or N/A)",
     "interest_rate_numeric": 8.5,
-    "interest_type": "Fixed / Floating / Mixed / Not specified",
-    "tenure": "string (e.g. 20 years)",
+    "interest_type": "Fixed / Floating / Mixed / Not specified / Not applicable",
+    "tenure": "string (e.g. 20 years or 11 months)",
     "tenure_months": 240,
-    "emi_amount": "string (estimated monthly EMI, e.g. ₹43,391)",
+    "emi_amount": "string (estimated monthly EMI or rent premium, e.g. ₹43,391 or ₹1,200)",
     "emi_numeric": 43391,
-    "processing_fee": "string (processing charges, e.g. ₹10,000)",
+    "processing_fee": "string (processing charges or deposit fee, e.g. ₹10,000)",
     "document_date": "string (e.g. 18 May 2026)",
-    "summary": "10-12 line expert plain-English summary of this loan document structure, highlighting key structural caveats.",
+    "summary": "10-12 line expert plain-English summary of this document structure, highlighting key structural caveats and risks.",
     "document_quality": "Clear / Partially Clear / Unclear"
   }},
   "hidden_traps": [
@@ -62,10 +62,10 @@ You must return a single JSON object containing exactly this structure, with no 
       "id": 1,
       "title": "Short descriptive title of the trap (e.g., Unilateral Floating Margin Clause)",
       "severity": "Critical / High / Medium / Low",
-      "original_text": "Exact quote or close paraphrase of the relevant contract clause",
+      "original_text": "EXACT VERBATIM QUOTE (case-sensitive, with exact spaces, symbols, and text) of the offending sentence/phrase as it appears in the DOCUMENT TEXT. This is critical for exact highlighting in the PDF.",
       "plain_explanation": "What this means in simple, everyday language",
-      "impact": "Concrete financial penalty or risk the borrower faces (e.g., specific rupee increase or credit impact)",
-      "advice": "Actionable advice or specific negotiation question the borrower can ask"
+      "impact": "Concrete financial penalty, coverage exclusion, or risk the consumer faces",
+      "advice": "Actionable advice or specific negotiation question the consumer can ask"
     }}
   ],
   "friendly_explanations": [
