@@ -198,27 +198,34 @@ def calculate_reality_cost(core_info: dict) -> dict:
     is_lease = "lease" in loan_type or "rent" in loan_type
 
     if is_insurance:
-        total_payment = emi * months
-        # For insurance, UI maps total_interest to "Co-pay Exposure". Estimate at 20% of Sum Insured.
-        total_interest = principal * 0.20
-        interest_percentage = 20.0
-        shock_statement = f"You will pay ₹{total_payment:,.0f} in premiums over {months} months, with an estimated ₹{total_interest:,.0f} out-of-pocket co-pay exposure."
+        # Annual premium is the premium rate (rate) or emi (monthly * 12)
+        annual_premium = rate if rate > 5000 else emi * 12
+        if annual_premium <= 0:
+            annual_premium = 8500
+        total_payment = annual_premium
+        
+        # Parse co-pay percentage from interest rate or default to 20%
+        copay_pct = 20.0
+        if 5.0 <= emi <= 50.0:
+            copay_pct = emi
+        
+        total_interest = principal * (copay_pct / 100.0)
+        interest_percentage = copay_pct
+        shock_statement = f"You will pay ₹{annual_premium:,.0f} in premiums over {months} months, with an estimated ₹{total_interest:,.0f} out-of-pocket co-pay/depreciation exposure."
         
         yearly_breakdown = []
-        for year in range(1, (months // 12) + 2):
-            if (year - 1) * 12 >= months:
-                break
+        for year in range(1, 6):  # 5-Year Outlook
             yearly_breakdown.append({
                 "year": year,
-                "emi_paid": round(emi * 12, 0),
-                "interest_paid": 0,
-                "principal_paid": 0,
+                "emi_paid": round(annual_premium, 0),
+                "interest_paid": round(total_interest, 0),
+                "principal_paid": round(principal, 0),
                 "remaining_balance": round(principal, 0)
             })
 
         return {
             "principal": round(principal, 0),
-            "emi_amount": round(emi, 0),
+            "emi_amount": round(annual_premium // 12, 0),
             "total_payment": round(total_payment, 0),
             "total_interest": round(total_interest, 0),
             "interest_percentage": interest_percentage,
@@ -227,27 +234,31 @@ def calculate_reality_cost(core_info: dict) -> dict:
         }
 
     elif is_lease:
-        total_payment = emi * months
-        # For lease, UI maps total_interest to Deposit exposure.
-        total_interest = principal  
-        interest_percentage = 0.0
-        shock_statement = f"You will pay ₹{total_payment:,.0f} in total rent over {months} months, with ₹{principal:,.0f} locked as security deposit."
+        monthly_rent = emi if emi > 1000 else principal
+        if monthly_rent <= 0:
+            monthly_rent = 22000
+        deposit = rate if rate > 1000 else 44000
+        total_payment = monthly_rent * months + deposit
+        total_interest = deposit  
+        interest_percentage = round((deposit / (monthly_rent * 12)) * 100.0, 1) if monthly_rent > 0 else 0
+        shock_statement = f"Your total contractual commitment for this {months}-month lease is ₹{total_payment:,.0f}, including a refundable deposit of ₹{deposit:,.0f}."
 
         yearly_breakdown = []
-        for year in range(1, (months // 12) + 2):
-            if (year - 1) * 12 >= months:
-                break
+        current_rent = monthly_rent
+        for year in range(1, 6):  # 5-Year Outlook with 5% annual escalation hikes
+            annual_rent_paid = current_rent * 12
             yearly_breakdown.append({
                 "year": year,
-                "emi_paid": round(emi * 12, 0),
-                "interest_paid": 0,
-                "principal_paid": 0,
-                "remaining_balance": 0
+                "emi_paid": round(annual_rent_paid, 0),
+                "interest_paid": round(deposit * 0.05, 0),  # opportunity cost of deposit (5% rate)
+                "principal_paid": round(annual_rent_paid, 0),
+                "remaining_balance": round(deposit, 0)
             })
+            current_rent *= 1.05  # 5% hike next year
 
         return {
-            "principal": round(principal, 0),
-            "emi_amount": round(emi, 0),
+            "principal": round(monthly_rent, 0),
+            "emi_amount": round(monthly_rent, 0),
             "total_payment": round(total_payment, 0),
             "total_interest": round(total_interest, 0),
             "interest_percentage": interest_percentage,
