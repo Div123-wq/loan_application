@@ -914,6 +914,96 @@ def get_mock_json_response(prompt: str) -> str:
         overall_level = "Low Risk"
         overall_color = "green"
 
+    # ── Dynamic Category-specific Cost Calculator ────────────────────────────
+    total_interest = 0
+    total_payment = 0
+    interest_percentage = 8.5
+    shock_statement = "The total amortized cost includes standard base premiums/fees."
+
+    if category == "Loan":
+        rate_val = interest_rate_numeric if type(interest_rate_numeric) in [int, float] else 8.5
+        interest_percentage = rate_val
+        tenure_years = max(1, tenure_months // 12)
+        
+        r = (rate_val / 12) / 100
+        if r > 0:
+            emi_approx = loan_amount_numeric * r * ((1 + r) ** tenure_months) / (((1 + r) ** tenure_months) - 1)
+            total_payment = int(emi_approx * tenure_months)
+            total_interest = max(0, total_payment - loan_amount_numeric)
+        else:
+            total_interest = int(loan_amount_numeric * (rate_val / 100) * tenure_years)
+            total_payment = loan_amount_numeric + total_interest
+
+        shock_statement = f"Over a {tenure} tenure, you will pay {fmt_inr(total_interest)} in interest alone, which represents {int((total_interest/loan_amount_numeric)*100)}% of your principal amount!"
+
+    elif category == "Lease":
+        monthly_rent = emi_numeric if type(emi_numeric) in [int, float] else 22000
+        deposit = interest_rate_numeric if type(interest_rate_numeric) in [int, float] else 44000
+        total_payment = monthly_rent * tenure_months + deposit
+        total_interest = deposit
+        interest_percentage = 0
+        shock_statement = f"Your total contractual commitment for this {tenure} lease is {fmt_inr(total_payment)}, including a refundable deposit of {fmt_inr(deposit)}."
+
+    elif category in ["Insurance", "Pet"]:
+        premium = interest_rate_numeric if type(interest_rate_numeric) in [int, float] else 8500
+        total_payment = premium
+        total_interest = 0
+        interest_percentage = 0
+        shock_statement = f"Your total annualized premium payment for this policy period is {fmt_inr(total_payment)}."
+
+    # Dynamic yearly breakdown calculation
+    yearly_breakdown = []
+    tenure_years = max(1, tenure_months // 12)
+    remaining_balance = loan_amount_numeric if category == "Loan" else total_payment
+
+    for year in range(1, min(6, tenure_years + 1)):
+        if category == "Loan":
+            year_emi_paid = emi_numeric * 12 if type(emi_numeric) in [int, float] else (total_payment // tenure_years)
+            year_interest_paid = int((remaining_balance * (interest_percentage / 100)))
+            year_principal_paid = max(0, year_emi_paid - year_interest_paid)
+            remaining_balance = max(0, remaining_balance - year_principal_paid)
+        elif category == "Lease":
+            year_emi_paid = emi_numeric * 12 if type(emi_numeric) in [int, float] else 264000
+            year_interest_paid = 0
+            year_principal_paid = year_emi_paid
+            remaining_balance = max(0, remaining_balance - year_emi_paid)
+        else: # Insurance / Pet
+            year_emi_paid = total_payment
+            year_interest_paid = 0
+            year_principal_paid = total_payment
+            remaining_balance = 0
+
+        yearly_breakdown.append({
+            "year": year,
+            "emi_paid": year_emi_paid,
+            "interest_paid": year_interest_paid,
+            "principal_paid": year_principal_paid,
+            "remaining_balance": remaining_balance
+        })
+
+    # Dynamic Trust Score Cards
+    transparency_score = max(35, 90 - (penalty_risk - 30))
+    fairness_score = max(30, 85 - (fairness - 30))
+    complexity_score = max(25, 80 - (interest_stability - 30))
+    avg_trust = int((transparency_score + fairness_score + complexity_score) / 3)
+
+    if avg_trust >= 80:
+        trust_grade = "A"
+        trust_grade_label = "Highly Trustworthy"
+        trust_summary = "The agreement is highly transparent, balanced, and contains minimal hidden risks or penalty structures."
+    elif avg_trust >= 60:
+        trust_grade = "B"
+        trust_grade_label = "Fairly Trustworthy"
+        trust_summary = "The document utilizes industry standard boilerplate language but includes some unfavorable margin clauses."
+    elif avg_trust >= 40:
+        trust_grade = "C"
+        trust_grade_label = "Needs Negotiation"
+        trust_summary = "Several clauses are heavily weighted in favor of the publisher. Direct negotiation is strongly advised."
+    else:
+        trust_grade = "D"
+        trust_grade_label = "High Risk Profile"
+        trust_summary = "Extreme risk factors and highly restrictive covenants are embedded. Legal representation is recommended."
+
     return json.dumps({
       "core_info": {
         "loan_type": category + (" Policy" if category in ["Pet", "Insurance"] else " Agreement"),
@@ -942,15 +1032,15 @@ def get_mock_json_response(prompt: str) -> str:
         "sub_scores": {
           "penalty_risk": penalty_risk,
           "interest_stability": interest_stability,
-          "transparency": 75,
-          "fairness": fairness,
-          "legal_complexity": 50
+          "transparency": transparency_score,
+          "fairness": fairness_score,
+          "legal_complexity": complexity_score
         },
         "verdict": verdict,
         "top_risk_factor": top_risk
       },
       "suspicious_clauses": {
-        "overall_suspicion": "Minor Concerns",
+        "overall_suspicion": "Minor Concerns" if avg_trust >= 60 else "Major Concerns",
         "suspicious_items": [
           {
             "id": 1,
@@ -959,32 +1049,24 @@ def get_mock_json_response(prompt: str) -> str:
             "reason": flag_reason,
             "original_text": flag_orig,
             "industry_standard": "All key rates, fees and penalties must be flat, transparent and capped.",
-            "severity": "High Concern"
+            "severity": "High Concern" if avg_trust < 60 else "Medium Concern"
           }
         ]
       },
       "reality_cost": {
-        "shock_statement": "The total amortized cost includes standard base premiums/fees.",
+        "shock_statement": shock_statement,
         "principal": loan_amount_numeric,
-        "total_interest": interest_rate_numeric * tenure_months if type(interest_rate_numeric) in [int, float] else 0,
-        "total_payment": loan_amount_numeric + (interest_rate_numeric * tenure_months if type(interest_rate_numeric) in [int, float] else 0),
-        "interest_percentage": 8.5,
-        "yearly_breakdown": [
-          {
-            "year": 1,
-            "emi_paid": emi_numeric * 12 if type(emi_numeric) in [int, float] else 0,
-            "interest_paid": interest_rate_numeric * 12 if type(interest_rate_numeric) in [int, float] else 0,
-            "principal_paid": loan_amount_numeric // max(1, (tenure_months // 12)),
-            "remaining_balance": max(0, loan_amount_numeric - (loan_amount_numeric // max(1, (tenure_months // 12))))
-          }
-        ]
+        "total_interest": total_interest,
+        "total_payment": total_payment,
+        "interest_percentage": interest_percentage,
+        "yearly_breakdown": yearly_breakdown
       },
       "trust_score": {
-        "transparency_score": 75, "transparency_note": "Core cost items are stated but dynamic penalty margins are vague.",
-        "fairness_score": 60, "fairness_note": "Unilateral adjustment privileges heavily favor the lender's interest margins.",
-        "complexity_score": 45, "complexity_note": "Standard legal phrasing requires active review.",
-        "trust_grade": "B", "trust_grade_label": "Fairly Trustworthy",
-        "trust_summary": "The document utilizes industry standard boilerplate language but includes multiple unfavorable clauses."
+        "transparency_score": transparency_score, "transparency_note": "Core cost items are stated but dynamic penalty margins are vague." if transparency_score < 75 else "Core cost items and primary schedules are clearly structured.",
+        "fairness_score": fairness_score, "fairness_note": "Unilateral adjustment privileges heavily favor the lender's interest margins." if fairness_score < 70 else "The agreement balances interests reasonably well.",
+        "complexity_score": complexity_score, "complexity_note": "Standard legal phrasing requires active review." if complexity_score < 60 else "The phrasing uses standard simple plain-English.",
+        "trust_grade": trust_grade, "trust_grade_label": trust_grade_label,
+        "trust_summary": trust_summary
       }
     })
 
