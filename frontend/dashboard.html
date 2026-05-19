@@ -843,7 +843,7 @@
     const meterCirc = document.getElementById('riskMeterCircle');
     // Ensure browser reflow before setting offset for animation to trigger
     setTimeout(() => {
-      meterCirc.setAttribute('stroke-dashoffset', strokeOffset);
+      meterCirc.style.strokeDashoffset = strokeOffset;
     }, 100);
     
     let colorClass = 'var(--amber)';
@@ -851,7 +851,7 @@
     else if(activeAnalysis.risk_score.overall_color === 'green') colorClass = 'var(--green)';
     else if(activeAnalysis.risk_score.overall_color === 'orange') colorClass = 'var(--orange)';
     
-    meterCirc.setAttribute('stroke', colorClass);
+    meterCirc.style.stroke = colorClass;
     document.getElementById('riskScore').style.color = colorClass;
     document.getElementById('riskScore').style.webkitTextFillColor = colorClass;
 
