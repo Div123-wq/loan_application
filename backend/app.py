@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 # Ensure backend directory is in python path for serverless imports
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -28,13 +28,13 @@ except OSError:
 
 @app.route('/')
 def serve_index():
-    """Serve the landing index.html by default."""
-    return send_from_directory(app.static_folder, 'index.html')
+    """Serve a basic status message for the root URL."""
+    return jsonify({"status": "ok", "message": "FinScan AI Backend API is running."})
 
-@app.route('/<path:path>')
-def serve_static(path):
-    """Fallback route to serve static html files like dashboard.html, simulator.html, etc."""
-    return send_from_directory(app.static_folder, path)
+@app.errorhandler(404)
+def not_found(e):
+    """Fallback route to return 404 JSON for unknown routes."""
+    return jsonify({"error": "Not Found", "message": "The requested URL was not found on the server."}), 404
 
 
 # Register blueprints
