@@ -5,28 +5,32 @@
 */
 (function(){
   const LANG_KEY = 'll_lang';
+  const SUPPORTED_LANGS = new Set(['en', 'hi', 'kn', 'ta', 'te', 'ml', 'mr']);
 
   async function loadTranslations(lang){
+    const targetLang = SUPPORTED_LANGS.has(lang) ? lang : 'en';
     try{
-      const url = (window.location.origin && window.location.origin !== 'null') ? `${window.location.origin}/i18n/${lang}.json` : `/i18n/${lang}.json`;
+      const url = `i18n/${targetLang}.json`;
       const res = await fetch(url + '?_=' + Date.now());
       console.log('i18n: loading', url);
       if(!res.ok) throw new Error('missing translations: ' + res.status);
       const dict = await res.json();
       if(dict.title) document.title = dict.title;
+      document.documentElement.lang = targetLang;
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if(dict[key] !== undefined) el.innerHTML = dict[key];
       });
     }catch(e){
-      console.warn('i18n load failed for', lang, e);
+      console.warn('i18n load failed for', targetLang, e);
     }
   }
 
   function setLang(lang){
-    try { localStorage.setItem(LANG_KEY, lang); } catch(e){}
-    fetch(`/api/set_language?lang=${lang}`).catch(()=>{});
-    loadTranslations(lang);
+    const targetLang = SUPPORTED_LANGS.has(lang) ? lang : 'en';
+    try { localStorage.setItem(LANG_KEY, targetLang); } catch(e){}
+    fetch(`/api/set_language?lang=${targetLang}`).catch(()=>{});
+    loadTranslations(targetLang);
   }
 
   function init(){

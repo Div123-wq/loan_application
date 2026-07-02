@@ -105,6 +105,15 @@
     <div style="display:flex; align-items:center; gap:20px; margin-left:auto;">
       <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌙</button>
       <div id="google_translate_element"></div>
+      <select class="language-select" aria-label="Language selector">
+        <option value="en">English</option>
+        <option value="hi">हिन्दी</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="ta">தமிழ்</option>
+        <option value="te">తెలుగు</option>
+        <option value="ml">മലയാളം</option>
+        <option value="mr">मराठी</option>
+      </select>
     </div>
     <div class="nav-brand" onclick="window.location.href='index.html'" style="cursor: pointer;">
       <div class="logo-icon">🔍</div>FinScan AI
@@ -328,6 +337,7 @@
     initThemeBtn();
   </script>
 
+<script src="js/language-switcher.js"></script>
 <!-- Google Translate Script -->
 <script type="text/javascript">
 function googleTranslateElementInit() {
@@ -337,9 +347,10 @@ function googleTranslateElementInit() {
     layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
     autoDisplay: false
   }, 'google_translate_element');
+  if (window.onGoogleTranslateReady) window.onGoogleTranslateReady();
 }
 </script>
-<script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>
 

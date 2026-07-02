@@ -21,7 +21,8 @@ app.config.setdefault('LANGUAGES', {
     'hi': 'Hindi',
     'mr': 'Marathi',
     'te': 'Telugu',
-    'ta': 'Tamil'
+    'ta': 'Tamil',
+    'ml': 'Malayalam'
 })
 
 # Simple message translations for small backend responses (avoid Flask-Babel incompatibility)
@@ -31,7 +32,8 @@ MESSAGES = {
     'kn': { 'status_msg': 'FinScan AI ಬ್ಯಾಕ್‌ಎಂಡ್ API ನಡೆಯುತ್ತಿದೆ.' },
     'mr': { 'status_msg': 'FinScan AI बॅकेंड API चालू आहे.' },
     'te': { 'status_msg': 'FinScan AI బ్యాక్‌ఎండ్ API నడుస్తోంది.' },
-    'ta': { 'status_msg': 'FinScan AI பின்-முனை API இயங்குகிறது.' }
+    'ta': { 'status_msg': 'FinScan AI பின்-முனை API இயங்குகிறது.' },
+    'ml': { 'status_msg': 'FinScan AI ബാക്കെൻഡ് API പ്രവർത്തിക്കുന്നു.' }
 }
 
 def get_preferred_lang(request):
@@ -112,4 +114,3 @@ def server_error(e):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-

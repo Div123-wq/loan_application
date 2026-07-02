@@ -436,6 +436,30 @@ p  { color: var(--text-secondary); }
   align-items: center;
 }
 
+.language-select {
+  display: none;
+}
+
+.app-language-select {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 7px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.app-language-select:hover,
+.app-language-select:focus {
+  border-color: var(--blue);
+  background: var(--bg-card);
+}
+
 .goog-te-gadget {
   font-family: 'Inter', sans-serif !important;
   color: transparent !important;
