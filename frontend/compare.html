@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinScan AI — Loan Comparison Battle</title>
+  <title id="pageTitle">FinScan AI — Loan Comparison Battle</title>
   <script>
     // Theme Flash Prevention
     (function() {
@@ -142,15 +142,15 @@
 
       <div class="sidebar-label">Comparison Battle</div>
       <button class="sidebar-item active">
-        <span class="icon">⚔️</span> Loan Battle
+        <span class="icon">⚔️</span> <span id="sidebarBattleText">Loan Battle</span>
       </button>
     </aside>
 
     <main class="main-content">
       <div class="section-header">
         <div>
-          <h2 class="grad-text">⚔️ Loan Comparison Battle</h2>
-          <p style="font-size: 0.9rem; margin-top: 4px;">Upload multiple loan offers and let AI dissect cost, safety, and clauses side-by-side.</p>
+          <h2 class="grad-text" id="headerTitle">⚔️ Loan Comparison Battle</h2>
+          <p style="font-size: 0.9rem; margin-top: 4px;" id="headerDesc">Upload multiple loan offers and let AI dissect cost, safety, and clauses side-by-side.</p>
         </div>
       </div>
 
@@ -167,7 +167,7 @@
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="slot-2-filename">No file selected</p>
           <div class="upload-box-small" id="upload-2" onclick="triggerUpload(2)">
             <span style="font-size: 1.2rem;">➕</span>
-            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Upload Loan 2</div>
+            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;" id="uploadText2">Upload Loan 2</div>
           </div>
           <input type="file" id="file-2" style="display:none;" onchange="handleComparisonUpload(2)">
         </div>
@@ -177,7 +177,7 @@
           <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;" id="slot-3-filename">No file selected</p>
           <div class="upload-box-small" id="upload-3" onclick="triggerUpload(3)">
             <span style="font-size: 1.2rem;">➕</span>
-            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;">Upload Loan 3</div>
+            <div style="font-size: 0.8rem; font-weight: 700; margin-top: 4px;" id="uploadText3">Upload Loan 3</div>
           </div>
           <input type="file" id="file-3" style="display:none;" onchange="handleComparisonUpload(3)">
         </div>
@@ -188,7 +188,7 @@
       </div>
 
       <div id="battleOutput" style="display: none;">
-        <div class="vs-divider">LOAN BATTLE DECISION</div>
+        <div class="vs-divider" id="vsDivider">LOAN BATTLE DECISION</div>
 
         <!-- AI Recommendation Verdict Cards -->
         <div class="comparison-grid" id="verdictGrid">
@@ -233,7 +233,7 @@
       <div id="demoBattleNotice" class="card" style="margin-top: 32px; background: rgba(79, 142, 247, 0.05); text-align: center; border: 1px dashed var(--blue);">
         <div style="font-size: 2.5rem; margin-bottom: 8px;">💡</div>
         <h3>Comparison Demo Active</h3>
-        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 6px auto 16px;">
+        <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 480px; margin: 6px auto 16px;" id="demoBattleText">
           We loaded default home loan agreements. Click the 'Initiate AI Battle' button to see how the side-by-side dissection and recommendation ledger works.
         </p>
       </div>
@@ -244,7 +244,7 @@
   <div class="toast-container" id="toastBox"></div>
 
   <script>
-    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
+    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' || window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
     let loadedDocs = [];
 
     // User profile indicator binding
@@ -476,6 +476,43 @@
       toast(`☀️ Theme switched to ${newTheme} mode!`, 'success');
     }
 
+    function initCompareCategory() {
+      try {
+        const stored = localStorage.getItem('ll_analysis');
+        if (!stored) return;
+        const analysis = JSON.parse(stored);
+        const docTypeLower = (analysis.core_info?.loan_type || "").toLowerCase();
+        
+        let prefix = "Loan";
+        let suffix = "offers";
+        if (docTypeLower.includes("pet") || docTypeLower.includes("animal")) {
+          prefix = "Pet Policy"; suffix = "policies";
+        } else if (docTypeLower.includes("insurance") || docTypeLower.includes("policy")) {
+          prefix = "Insurance"; suffix = "policies";
+        } else if (docTypeLower.includes("lease") || docTypeLower.includes("rent")) {
+          prefix = "Lease"; suffix = "agreements";
+        }
+
+        if(prefix !== "Loan") {
+          document.getElementById('pageTitle').textContent = `FinScan AI — ${prefix} Comparison Battle`;
+          document.getElementById('sidebarBattleText').textContent = `${prefix} Battle`;
+          document.getElementById('headerTitle').innerHTML = `⚔️ ${prefix} Comparison Battle`;
+          document.getElementById('headerDesc').textContent = `Upload multiple ${prefix.toLowerCase()} ${suffix} and let AI dissect cost, safety, and clauses side-by-side.`;
+          document.getElementById('uploadText2').textContent = `Upload ${prefix} 2`;
+          document.getElementById('uploadText3').textContent = `Upload ${prefix} 3`;
+          document.getElementById('vsDivider').textContent = `${prefix.toUpperCase()} BATTLE DECISION`;
+          
+          const demoNotice = document.getElementById('demoBattleText');
+          if (demoNotice) {
+            demoNotice.textContent = `We loaded default ${prefix.toLowerCase()} ${suffix}. Click the 'Initiate AI Battle' button to see how the side-by-side dissection and recommendation ledger works.`;
+          }
+        }
+      } catch(e) {
+        console.error("Error setting compare category:", e);
+      }
+    }
+
+    initCompareCategory();
     initThemeBtn();
   </script>
 

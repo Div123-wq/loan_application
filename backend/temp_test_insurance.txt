@@ -1,0 +1,7 @@
+Star Health Insurance Company
+Health Insurance Policy
+Policyholder: Rohan Sharma
+Sum Insured: ₹5,00,000
+Annual Premium: ₹8,500
+Waiting Period: 24 months
+Exclusions: Pre-existing diseases

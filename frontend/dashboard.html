@@ -285,7 +285,7 @@
         <span class="icon">🔮</span> What-If Simulator
       </button>
       <button class="sidebar-item" onclick="window.location.href='compare.html'">
-        <span class="icon">⚔️</span> Loan Battle
+        <span class="icon">⚔️</span> <span id="sidebarBattleText">Loan Battle</span>
       </button>
       <button class="sidebar-item" onclick="window.location.href='chat.html'">
         <span class="icon">🤖</span> AI Friend Chat
@@ -301,7 +301,7 @@
     <main class="main-content">
       <!-- Demo Active Banner -->
       <div id="demoBanner" class="demo-banner" style="display:none;">
-        <span>👉 Showing Demo Mode. Upload your own loan document to analyze custom data!</span>
+        <span id="demoNoticeText">👉 Showing Demo Mode. Upload your own document to analyze custom data!</span>
         <button onclick="window.location.href='index.html'">Upload File</button>
       </div>
 
@@ -762,7 +762,7 @@
       window.location.href = 'index.html';
     }
 
-    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
+    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' || window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
 
     function toast(msg, type='info') {
       const c = document.getElementById('toastBox');
@@ -845,10 +845,15 @@
     let activeAnalysis = null;
     try {
       const stored = localStorage.getItem('ll_analysis');
+      const docId = localStorage.getItem('ll_doc_id');
       if (stored) {
         activeAnalysis = JSON.parse(stored);
         if (activeAnalysis.success && activeAnalysis.core_info) {
           console.log("Loaded custom uploaded analysis!");
+          if (docId && activeAnalysis.doc_id && activeAnalysis.doc_id !== docId) {
+            localStorage.removeItem('ll_analysis');
+            activeAnalysis = MOCK_ANALYSIS;
+          }
         } else {
           activeAnalysis = MOCK_ANALYSIS;
           document.getElementById('demoBanner').style.display = 'flex';
@@ -912,10 +917,11 @@
 
     // Populate Page Elements
     try {
-      document.getElementById('docTypeBadge').textContent = activeAnalysis.core_info.loan_type || "Document";
+      const normalizedDocType = (activeAnalysis.core_info.loan_type || "Document").toString();
+      document.getElementById('docTypeBadge').textContent = normalizedDocType;
       document.getElementById('docTitle').textContent = (activeAnalysis.filename || "Document") + " Analysis";
       let mainLenderLabel = "Lender";
-      const mainDocTypeLower = (activeAnalysis.core_info.loan_type || "").toLowerCase();
+      const mainDocTypeLower = normalizedDocType.toLowerCase();
       if (mainDocTypeLower.includes("insurance") || mainDocTypeLower.includes("policy")) {
         mainLenderLabel = "Institution / Organization";
       } else if (mainDocTypeLower.includes("pet") || mainDocTypeLower.includes("animal")) {
@@ -943,7 +949,7 @@
     let subPenaltyLabel = "Penalty Threat";
     let subInterestLabel = "Interest Stability";
     
-    const docTypeLower = (activeAnalysis.core_info.loan_type || "").toLowerCase();
+    const docTypeLower = normalizedDocType.toLowerCase();
     if (docTypeLower.includes("pet") || docTypeLower.includes("animal") || docTypeLower.includes("veterinary")) {
       uiAmountLabel = "Coverage Limit";
       uiRateLabel = "Premium Rate";
@@ -963,6 +969,17 @@
       subPenaltyLabel = "Holdback & Damage Threat";
       subInterestLabel = "Rent Escalation Stability";
     }
+    
+    let battleText = "Loan Battle";
+    if (docTypeLower.includes("pet") || docTypeLower.includes("animal")) {
+      battleText = "Pet Policy Battle";
+    } else if (docTypeLower.includes("insurance") || docTypeLower.includes("policy")) {
+      battleText = "Insurance Battle";
+    } else if (docTypeLower.includes("lease") || docTypeLower.includes("rent")) {
+      battleText = "Lease Battle";
+    }
+    const sb = document.getElementById('sidebarBattleText');
+    if(sb) sb.textContent = battleText;
     
     document.getElementById('labelAmount').textContent = uiAmountLabel;
     document.getElementById('labelRate').textContent = uiRateLabel;
@@ -1209,6 +1226,10 @@ Borrower covenants to pay all legal costs, disbursements and attorney charges in
 IN WITNESS WHEREOF, the parties hereto have set their hands the day and year first above written.`;
 
     function initializeSmartReader() {
+      const readerDocPane = document.getElementById('readerDocPane');
+      if (!readerDocPane) {
+        return;
+      }
       let docText = activeAnalysis.document_text || MOCK_DOC_TEXT;
 
       // ── Step 1: Collect all items to highlight ──────────────────────

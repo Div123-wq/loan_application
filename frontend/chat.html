@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -170,7 +170,7 @@
           <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px;">🗣️ Negotiation Script Dialogue</h4>
           <p style="font-size: 0.78rem; color: var(--text-muted);">Use this polite benchmark opener to negotiate floating margins or charges:</p>
           <div class="negotiation-script-box" id="negotiationScript">
-            "Thank you for the initial loan agreement proposal. Given my positive repayment track record and credit rating of 780, the 2% foreclosure exit fee and ₹15,000 flat administrative levy deviate slightly from comparable tier-1 lender standards. Could we modify this fee sheet to match competitor parameters?"
+            "Thank you for the initial agreement proposal. Given my positive repayment track record and credit rating of 780, the 2% foreclosure exit fee and ₹15,000 flat administrative levy deviate slightly from comparable tier-1 lender standards. Could we modify this fee sheet to match competitor parameters?"
           </div>
         </div>
 
@@ -187,14 +187,14 @@
           <!-- Chat messages area -->
           <div class="chat-messages" id="chatMessages">
             <div class="chat-bubble ai animate-fade-in">
-              <p>Hey there! I'm your FinScan companion. Ask me anything about your uploaded document! For example, you can ask <strong>"Can this loan become dangerous later?"</strong> or <strong>"Explain late payment terms."</strong></p>
+              <p>Hey there! I'm your FinScan companion. Ask me anything about your uploaded document! For example, you can ask <strong>"Can this agreement become dangerous later?"</strong> or <strong>"Explain late payment terms."</strong></p>
             </div>
           </div>
 
           <!-- Input bar -->
           <div class="chat-input-bar">
             <button class="voice-btn" id="voiceBtn" onclick="toggleVoiceInput()" title="Speech-to-Text Input">🎙️</button>
-            <input type="text" id="chatInput" placeholder="Ask about your loan document..." onkeydown="handleEnter(event)">
+            <input type="text" id="chatInput" placeholder="Ask about your document..." onkeydown="handleEnter(event)">
             <button class="btn btn-primary btn-sm" onclick="sendChatMessage()" style="border-radius: var(--radius-sm); padding: 12px 20px;">Send 🚀</button>
           </div>
         </div>
@@ -206,8 +206,8 @@
   <div class="toast-container" id="toastBox"></div>
 
   <script>
-    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
-    let docId = localStorage.getItem('ll_active_doc_id') || "";
+    const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' || window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
+    let docId = localStorage.getItem('ll_active_doc_id') || localStorage.getItem('ll_doc_id') || "";
     let sessionId = "session_" + Math.random().toString(36).substr(2, 9);
     let activeLang = "en";
 
@@ -367,7 +367,7 @@
         const container = document.getElementById('chatMessages');
         container.innerHTML = `
           <div class="chat-bubble ai">
-            <p>Chat history has been cleared. Ask me a fresh query about your loan terms!</p>
+            <p>Chat history has been cleared. Ask me a fresh query about your document terms!</p>
           </div>
         `;
         toast("Conversation cleared!", "success");

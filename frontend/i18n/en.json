@@ -1,0 +1,21 @@
+{
+  "title": "FinScan AI — AI Financial Intelligence Assistant",
+  "hero_tag": "AI Financial Intelligence · GitHub Models",
+  "hero_title": "Your Financial Document\nDecoded in Seconds.\nNot Summaries — Intelligence.",
+  "hero_desc": "FinScan AI finds hidden traps, calculates the real cost, and explains every clause like a trusted friend — before you sign.",
+  "analyze_btn": "🚀 Analyze My Document",
+  "explore_btn": "Explore Demo",
+  "nav_home": "Home",
+  "nav_dashboard": "Dashboard",
+  "nav_simulator": "Simulator",
+  "nav_compare": "Compare",
+  "nav_chat": "AI Chat",
+  "portal_login": "Portal Login",
+  "stat_features": "AI Features",
+  "stat_time": "Analysis Time",
+  "stat_langs": "Languages",
+  "upload_card_title": "🔍 Analyze Your Document",
+  "upload_card_sub": "PDF, scanned image, or agreement",
+  "upload_title": "Drop your document here",
+  "upload_subtitle": "or click to browse files"
+}

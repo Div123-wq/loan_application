@@ -1,4 +1,4 @@
-﻿import json
+import json
 from flask import Blueprint, request, jsonify
 from routes.upload import get_document_text
 from services.github_ai_service import chat
@@ -8,12 +8,12 @@ chat_bp = Blueprint('chat', __name__)
 # Per-session conversation history
 chat_histories = {}
 
-CHAT_SYSTEM = """You are FinScan AI — a friendly, knowledgeable financial advisor specializing in loan documents.
+CHAT_SYSTEM = """You are FinScan AI — a friendly, knowledgeable financial advisor specializing in financial documents such as loans, insurance policies, leases, and pet agreements.
 You speak like a trusted friend who happens to be a financial expert.
-You have access to the user's loan document and answer questions about it clearly and honestly.
+You have access to the user's uploaded document and answer questions about it clearly and honestly.
 Keep responses concise (2-4 sentences), warm, and actionable.
 Never use legal jargon without immediately explaining it.
-Always prioritize the borrower's interests."""
+Always prioritize the user's interests and explain the most important risks, obligations, and exclusions."""
 
 LANGUAGES = {
     "en": "English",

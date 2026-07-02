@@ -11,7 +11,7 @@
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <meta name="description" content="FinScan AI decodes loan documents — detecting hidden traps, calculating real costs, and explaining legal jargon in plain language." />
+  <meta name="description" content="FinScan AI decodes financial documents — detecting hidden traps, calculating real costs, and explaining legal jargon in plain language." />
   <link rel="stylesheet" href="css/global.css" />
   <style>
     .hero {
@@ -93,17 +93,25 @@
 <nav class="navbar">
   <div class="nav-brand"><div class="logo-icon">🔍</div>FinScan AI</div>
   <div class="nav-links">
-    <a href="index.html" class="active">Home</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="simulator.html">Simulator</a>
-    <a href="compare.html">Compare</a>
-    <a href="chat.html">AI Chat</a>
+    <a href="index.html" class="active" data-i18n="nav_home">Home</a>
+    <a href="dashboard.html" data-i18n="nav_dashboard">Dashboard</a>
+    <a href="simulator.html" data-i18n="nav_simulator">Simulator</a>
+    <a href="compare.html" data-i18n="nav_compare">Compare</a>
+    <a href="chat.html" data-i18n="nav_chat">AI Chat</a>
   </div>
   <div style="display:flex; align-items:center; gap:16px;">
     <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Theme">🌙</button>
     <div id="google_translate_element"></div>
+    <select id="langSelect" aria-label="Language selector" onchange="changeLang(this.value)" style="padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text-secondary);">
+      <option value="en">English</option>
+      <option value="hi">हिन्दी</option>
+      <option value="kn">ಕನ್ನಡ</option>
+      <option value="ta">தமிழ்</option>
+      <option value="te">తెలుగు</option>
+      <option value="mr">मराठी</option>
+    </select>
     <div id="navCtaArea">
-    <button class="nav-cta" onclick="window.location.href='auth.html'">Portal Login</button>
+    <button class="nav-cta" onclick="window.location.href='auth.html'" data-i18n="portal_login">Portal Login</button>
   </div>
   </div>
 </nav>
@@ -112,33 +120,28 @@
   <div class="hero-bg"></div><div class="grid-lines"></div>
   <div class="hero-inner">
     <div class="animate-fade-up">
-      <div class="hero-tag"><span class="dot"></span> AI Financial Intelligence · GitHub Models</div>
-      <h1 class="hero-title">
-        Your Financial Document<br>
-        <span class="grad-text">Decoded in Seconds.</span><br>
-        Not Summaries —<br>
-        <span class="grad-text-danger">Intelligence.</span>
-      </h1>
-      <p class="hero-desc">FinScan AI finds hidden traps, calculates the <em>real</em> cost, and explains every clause like a trusted friend — before you sign.</p>
+      <div class="hero-tag" data-i18n="hero_tag"><span class="dot"></span> AI Financial Intelligence · GitHub Models</div>
+      <h1 class="hero-title" data-i18n="hero_title">Your Financial Document\nDecoded in Seconds.\nNot Summaries — Intelligence.</h1>
+      <p class="hero-desc" data-i18n="hero_desc">FinScan AI finds hidden traps, calculates the <em>real</em> cost, and explains every clause like a trusted friend — before you sign.</p>
       <div class="hero-cta">
-        <button class="btn btn-primary" onclick="triggerUploadGuard()">🚀 Analyze My Document</button>
-        <a href="dashboard.html?demo=1" class="btn btn-secondary">Explore Demo</a>
+        <button class="btn btn-primary" onclick="triggerUploadGuard()" data-i18n="analyze_btn">🚀 Analyze My Document</button>
+        <a href="dashboard.html?demo=1" class="btn btn-secondary" data-i18n="explore_btn">Explore Demo</a>
       </div>
       <div class="hero-stats">
-        <div class="hero-stat"><div class="num grad-text">12+</div><div class="lbl">AI Features</div></div>
-        <div class="hero-stat"><div class="num grad-text">30s</div><div class="lbl">Analysis Time</div></div>
-        <div class="hero-stat"><div class="num grad-text">6</div><div class="lbl">Languages</div></div>
+        <div class="hero-stat"><div class="num grad-text">12+</div><div class="lbl" data-i18n="stat_features">AI Features</div></div>
+        <div class="hero-stat"><div class="num grad-text">30s</div><div class="lbl" data-i18n="stat_time">Analysis Time</div></div>
+        <div class="hero-stat"><div class="num grad-text">6</div><div class="lbl" data-i18n="stat_langs">Languages</div></div>
       </div>
     </div>
 
     <div class="hero-upload animate-fade-up" style="animation-delay:.2s">
       <div class="upload-card">
-        <div class="upload-card-title">🔍 Analyze Your Document</div>
-        <div class="upload-card-sub">PDF, scanned image, or agreement</div>
+        <div class="upload-card-title" data-i18n="upload_card_title">🔍 Analyze Your Document</div>
+        <div class="upload-card-sub" data-i18n="upload_card_sub">PDF, scanned image, or agreement</div>
         <div class="upload-zone" id="dropZone">
           <div class="upload-icon">📄</div>
-          <div class="upload-title">Drop your document here</div>
-          <div class="upload-subtitle">or click to browse files</div>
+          <div class="upload-title" data-i18n="upload_title">Drop your document here</div>
+          <div class="upload-subtitle" data-i18n="upload_subtitle">or click to browse files</div>
           <div class="upload-formats">
             <span class="upload-format-tag">PDF</span>
             <span class="upload-format-tag">JPG</span>
@@ -167,18 +170,18 @@
   <div class="section-top">
     <div class="section-label">Powered by GitHub Models GPT-4o</div>
     <h2><span class="grad-text">12 AI Features</span> That Protect You</h2>
-    <p style="color:var(--text-secondary);max-width:500px;margin:.8rem auto 0">Everything hidden in your loan document — exposed, explained, and quantified.</p>
+    <p style="color:var(--text-secondary);max-width:500px;margin:.8rem auto 0">Everything hidden in your agreement — exposed, explained, and quantified.</p>
   </div>
   <div class="features-grid">
     <div class="feature-card"><div class="feature-icon" style="background:rgba(239,68,68,.1)">⚠️</div><div class="feature-title">Hidden Trap Detector</div><div class="feature-desc">AI identifies penalty clauses, foreclosure charges, and variable rate risks most people ignore before signing.</div></div>
     <div class="feature-card"><div class="feature-icon" style="background:rgba(79,142,247,.1)">💬</div><div class="feature-title">Explain Like a Friend</div><div class="feature-desc">"Bank reserves right to revise rates" → "The bank can increase your EMI." Plain language, zero jargon.</div></div>
     <div class="feature-card"><div class="feature-icon" style="background:rgba(245,158,11,.1)">🎯</div><div class="feature-title">Risk Meter</div><div class="feature-desc">Visual risk indicator: Low / Medium / High / Critical. Sub-scores for penalties, stability, and fairness.</div></div>
-    <div class="feature-card"><div class="feature-icon" style="background:rgba(16,185,129,.1)">💰</div><div class="feature-title">Reality Cost Calculator</div><div class="feature-desc">See the full truth — total repayment, hidden fees, and compound interest impact over your loan tenure.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(16,185,129,.1)">💰</div><div class="feature-title">Reality Cost Calculator</div><div class="feature-desc">See the full truth — total repayment, hidden fees, and compound interest impact over your contract tenure.</div></div>
     <div class="feature-card"><div class="feature-icon" style="background:rgba(124,58,237,.1)">🔮</div><div class="feature-title">What-If Simulator</div><div class="feature-desc">"What if I miss 2 EMIs?" Instant simulation of penalties, credit score drops, and future repayment changes.</div></div>
-    <div class="feature-card"><div class="feature-icon" style="background:rgba(6,182,212,.1)">⚔️</div><div class="feature-title">Loan Comparison Battle</div><div class="feature-desc">Upload 2-3 loan offers. AI compares cost, risk, hidden terms — and picks the winner.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(6,182,212,.1)">⚔️</div><div class="feature-title">Comparison Battle</div><div class="feature-desc">Upload 2-3 document offers. AI compares cost, risk, hidden terms — and picks the winner.</div></div>
     <div class="feature-card"><div class="feature-icon" style="background:rgba(239,68,68,.1)">🕵️</div><div class="feature-title">Fraud Clause Detector</div><div class="feature-desc">Flags vague wording, abnormal fees, misleading language. Confidence scores per flag.</div></div>
     <div class="feature-card"><div class="feature-icon" style="background:rgba(245,158,11,.1)">🫀</div><div class="feature-title">Financial Pressure Detector</div><div class="feature-desc">Enter salary + expenses. AI predicts your stress months and when your budget might break.</div></div>
-    <div class="feature-card"><div class="feature-icon" style="background:rgba(79,142,247,.1)">🌏</div><div class="feature-title">6 Regional Languages</div><div class="feature-desc">Get your loan explained in Hindi, Kannada, Tamil, Telugu, Malayalam, or Marathi.</div></div>
+    <div class="feature-card"><div class="feature-icon" style="background:rgba(79,142,247,.1)">🌏</div><div class="feature-title">6 Regional Languages</div><div class="feature-desc">Get your contract explained in Hindi, Kannada, Tamil, Telugu, Malayalam, or Marathi.</div></div>
   </div>
 </section>
 
@@ -189,7 +192,7 @@
   </div>
   <div class="steps">
     <div class="step"><div class="step-num">1</div><div class="step-title">Upload Document</div><div class="step-desc">PDF, scanned image, or bank agreement</div></div>
-    <div class="step"><div class="step-num">2</div><div class="step-title">AI Reads It</div><div class="step-desc">OCR extracts text, AI identifies loan structure</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-title">AI Reads It</div><div class="step-desc">OCR extracts text, AI identifies document structure</div></div>
     <div class="step"><div class="step-num">3</div><div class="step-title">Intelligence Generated</div><div class="step-desc">Risk scores, traps, costs, simulations computed</div></div>
     <div class="step"><div class="step-num">4</div><div class="step-title">Your Dashboard</div><div class="step-desc">Clear visual report with actionable advice</div></div>
   </div>
@@ -199,7 +202,7 @@
 <div class="toast-container" id="toastBox"></div>
 
 <script>
-const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' ? 'http://localhost:5000' : '';
+const API = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') || window.location.origin === 'null' || window.location.protocol === 'file:' ? 'http://localhost:5000' : '';
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 
@@ -266,7 +269,11 @@ async function handleFile(file) {
     const ad = await ar.json();
     if (!ar.ok) throw new Error(ad.error || 'Analysis failed');
     step(5,'done');
+    localStorage.removeItem('ll_analysis');
     localStorage.setItem('ll_analysis', JSON.stringify(ad));
+    localStorage.setItem('ll_doc_id', ud.doc_id);
+    localStorage.setItem('ll_active_doc_id', ud.doc_id);
+    localStorage.setItem('ll_filename', ud.filename);
     toast('✅ Done! Loading dashboard…','success');
     setTimeout(() => window.location.href='dashboard.html', 800);
   } catch(e) {
@@ -310,6 +317,34 @@ function toggleTheme() {
 }
 
 initThemeBtn();
+</script>
+
+<!-- Local i18n loader -->
+<script src="js/i18n.js"></script>
+<script>
+  // Force-setting language and reloading so translations apply reliably.
+  function changeLang(lang){
+    try{ localStorage.setItem('ll_lang', lang); }catch(e){}
+    // best-effort: tell backend
+    fetch('/api/set_language?lang='+lang).catch(()=>{});
+
+    // Prefer Google Translate widget if available
+    try{
+      const combo = document.querySelector('.goog-te-combo');
+      if(combo){
+        combo.value = lang;
+        combo.dispatchEvent(new Event('change'));
+        return;
+      }
+    }catch(e){ console.warn('google translate activation failed', e); }
+
+    // Fallback to local loader
+    if(window.appI18n){
+      try{ window.appI18n.setLang(lang); }catch(e){ console.warn(e); }
+    }
+    // final fallback: reload so server-side cookie is used
+    setTimeout(()=> location.reload(), 400);
+  }
 </script>
 
 <!-- Google Translate Script -->

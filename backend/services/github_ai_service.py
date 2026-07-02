@@ -3,7 +3,8 @@ import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
-load_dotenv()
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(env_path)
 
 _client = None
 
@@ -25,8 +26,9 @@ def get_model():
 def chat(system_prompt: str, user_prompt: str, temperature: float = 0.3) -> str:
     """Send a chat request to GitHub Models, or fallback to an intelligent mock advisor if no token or error."""
     client = get_client()
+    combined_prompt = f"{system_prompt}\n\nUSER PROMPT:\n{user_prompt}"
     if client is None:
-        return get_mock_chat_response(user_prompt)
+        return get_mock_chat_response(combined_prompt)
 
     model = get_model()
     try:
@@ -41,13 +43,14 @@ def chat(system_prompt: str, user_prompt: str, temperature: float = 0.3) -> str:
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"Error calling GitHub AI Service (falling back to mock): {e}")
-        return get_mock_chat_response(user_prompt)
+        return get_mock_chat_response(combined_prompt)
 
 def chat_json(system_prompt: str, user_prompt: str, temperature: float = 0.2) -> str:
     """Send a chat request and request JSON output, or fallback to mock JSON if no token or error."""
     client = get_client()
+    combined_prompt = f"{system_prompt}\n\nUSER PROMPT:\n{user_prompt}"
     if client is None:
-        return get_mock_json_response(user_prompt)
+        return get_mock_json_response(combined_prompt)
 
     model = get_model()
     try:
@@ -81,21 +84,102 @@ def chat_json(system_prompt: str, user_prompt: str, temperature: float = 0.2) ->
 # INTELLIGENT MOCK RESPONSES FOR DEMO MODE
 # ─────────────────────────────────────────────
 
+def _extract_document_text(prompt: str) -> str:
+    """Extract the uploaded document text from a prompt in a case-insensitive way."""
+    p_lower = prompt.lower()
+    for marker in ["loan document context:", "document text:"]:
+        idx = p_lower.find(marker)
+        if idx != -1:
+            return prompt[idx + len(marker):].strip()
+    return prompt.strip()
+
+
+def _extract_latest_user_message(prompt: str) -> str:
+    """Extract the newest user message from a chat history prompt."""
+    marker = "user:"
+    last_idx = prompt.lower().rfind(marker)
+    if last_idx == -1:
+        return prompt.strip()
+
+    segment = prompt[last_idx + len(marker):].strip()
+    assistant_idx = segment.lower().find("\nassistant:")
+    if assistant_idx != -1:
+        segment = segment[:assistant_idx].strip()
+    return segment
+
+
 def get_mock_chat_response(prompt: str) -> str:
     """Returns dynamic, helpful mock responses when API token is not supplied."""
-    p_lower = prompt.lower()
-    
-    if "dangerous" in p_lower or "trap" in p_lower or "risk" in p_lower:
+    doc_text = _extract_document_text(prompt)
+    doc_lower = doc_text.lower()
+    latest_message = _extract_latest_user_message(prompt).lower()
+
+    if "user prompt:" in prompt.lower():
+        latest_message = latest_message.replace("user prompt:", "").strip()
+
+    is_insurance = any(word in doc_lower for word in ["insurance", "premium", "sum insured", "co-payment", "co-pay", "waiting period", "claim"])
+    is_lease = any(word in doc_lower for word in ["lease", "rent", "tenant", "landlord", "security deposit"])
+    is_pet = any(word in doc_lower for word in ["pet", "veterinary", "animal", "adoption"])
+
+    charge_keywords = ["charge", "charges", "fee", "fees", "processing", "administration"]
+    coverage_keywords = ["cover", "coverage", "insured", "claim", "hospital", "benefit", "sum insured"]
+
+    if any(word in latest_message for word in ["hi", "hello", "hey", "greetings", "good morning", "good evening"]):
+        if any(word in latest_message for word in ["dangerous", "risk", "trap", "become dangerous"]):
+            pass
+        else:
+            return "Hello! I can help you review this document. Ask me about risks, coverage, premiums, waiting periods, or exclusions."
+
+    if any(word in latest_message for word in charge_keywords):
+        if is_insurance:
+            if "₹1,000" in doc_lower or "1000" in doc_lower or "administration fee" in doc_lower:
+                return "The document mentions a processing or administration fee of ₹1,000. In addition to that, you should also check the premium amount and any policy-specific charges before buying or renewing."
+            return "The document does not clearly mention a processing charge in the extracted text, so you should confirm the exact fee with the insurer before proceeding."
+        return "The document does not clearly mention a processing charge in the extracted text, so you should confirm the exact fee with the provider before proceeding."
+
+    if any(word in latest_message for word in coverage_keywords):
+        if is_insurance:
+            return "This policy provides coverage up to the sum insured, which appears to be ₹5,00,000 here. The most important parts to review are the waiting period, co-payment ratio, room-rent sub-limits, and exclusions for pre-existing conditions."
+        return "This document appears to involve a coverage amount or benefit level. Review the stated limits, exclusions, and any conditions that reduce the payout before relying on it."
+
+    if "dangerous" in latest_message or "trap" in latest_message or "risk" in latest_message:
+        if is_insurance:
+            return "Yes, this policy has a few important risk points. The biggest one is usually the waiting period and co-payment structure, which can leave you paying more out of pocket even when you need treatment. You should also check room-rent caps, exclusions, and whether pre-existing conditions are covered."
+        if is_lease:
+            return "Yes, the lease has a couple of risk points. The biggest concern is usually the notice period and deposit terms, which can become expensive if the tenancy changes unexpectedly. You should also review maintenance obligations and any clauses that allow unilateral rent increases."
+        if is_pet:
+            return "Yes, this pet policy can become costly in the long run. The biggest risk is usually pre-existing condition exclusions and breed-specific limitations. Review exclusions carefully and ask whether premiums can rise during the policy term."
         return "Yes, this loan has a couple of elements that could become dangerous. The biggest risk is the floating rate clause linked to MCLR. If benchmark rates rise, the bank can unilaterally increase your interest rate and your monthly EMI will jump without warning. Additionally, there is a high 2% foreclosure penalty fee that prevents you from easily switching to a cheaper lender later."
-        
-    if "miss" in p_lower or "late" in p_lower or "penalty" in p_lower:
+
+    if "miss" in latest_message or "late" in latest_message or "penalty" in latest_message:
+        if is_insurance:
+            return "If you miss premium payments or delay renewal, your policy may lapse and coverage could stop. That can leave you exposed to hospital bills or claim denials during the waiting period, so keeping the premium current is critical."
+        if is_lease:
+            return "If you miss rent payments or delay notice, the landlord may begin notice proceedings or deduct from your deposit. That can make the tenancy costly and stressful, so review the late-payment and notice terms carefully."
         return "If you miss or delay a payment, the bank will charge an additional penal interest rate of 2% per month (24% per year) compounded on outstanding arrears. More importantly, missing payments will trigger an immediate reporting to credit bureaus, dropping your credit rating by 50-80 points, which makes future loans far more expensive."
-        
-    if "negotiate" in p_lower or "bargain" in p_lower:
+
+    if "negotiate" in latest_message or "bargain" in latest_message:
+        if is_insurance:
+            return "You have room to negotiate before signing this policy. Ask for better co-pay terms, a waiver of sub-limits for room rent, and clearer exclusions so you are not surprised later."
+        if is_lease:
+            return "You can negotiate the lease terms before signing. Ask for a fair notice period, a clear list of wear-and-tear deductions, and a cap on any deposit deductions."
         return "You have excellent leverage to negotiate terms before signing! Ask the bank to fully waive the flat INR 15,000 administrative levy (since you are already paying standard processing charges). You should also bargain to cap the floating rate margin adjustment at 1% per year, and request a waiver of foreclosure penalties after year 3."
 
-    # General friendly companion response
-    return "That's a very standard clause in home loan agreements! It essentially means you are responsible for maintaining property insurance with the bank named as the primary beneficiary. If you'd like to look at potential trap clauses or negotiate terms, check out the tabs on the left sidebar!"
+    if is_insurance:
+        if "sum insured" in doc_lower or "premium" in doc_lower:
+            return "This policy appears to center on a sum insured and annual premium. The most important things to verify are the waiting period, co-payment ratio, room-rent limits, and whether pre-existing conditions are excluded."
+        return "This appears to be an insurance document. The key points to verify are the coverage amount, premium, waiting periods, and exclusions so you know what is truly covered."
+
+    if is_lease:
+        return "This appears to be a lease or rental document. The most important points to check are rent amount, notice period, deposit terms, and any clauses allowing the landlord to deduct for maintenance or damage."
+
+    if is_pet:
+        return "This appears to be a pet policy or agreement. The most important points to check are coverage limits, exclusions, waiting periods, and any breed-specific limitations before you rely on it."
+
+    if latest_message.strip():
+        return f"I can help with that. Based on the uploaded document, the key things to review are the main amount, recurring obligations, exclusions, waiting periods, and any fees or penalties that could affect you later."
+
+    return "This document looks like a standard financial agreement. The most useful next step is to identify the core amount, the recurring obligation, any waiting period or penalty clauses, and any exclusions that could surprise you later."
 
 
 def get_mock_json_response(prompt: str) -> str:
@@ -187,7 +271,8 @@ def get_mock_json_response(prompt: str) -> str:
             text, re.IGNORECASE | re.DOTALL
         )
         if m:
-            return (m.group(1) or m.group(2)).replace(',', '')
+            raw_value = (m.group(1) or m.group(2)).replace(',', '')
+            return parse_currency_amount(raw_value, text[m.start():m.end() + 40])
         return None
 
     # Universal large amount fallback if no label matched
@@ -197,6 +282,61 @@ def get_mock_json_response(prompt: str) -> str:
             val = (group1 or group2).replace(',', '')
             if val.isdigit() and int(val) >= 10000:
                 return val
+        return None
+
+    def parse_currency_amount(value, context=""):
+        """Parse numeric currency with lakh/crore/thousand multipliers."""
+        try:
+            num = float(value)
+        except ValueError:
+            return None
+        text = context.lower() if context else ""
+        multiplier = 1
+        if re.search(r'\b(crore|cr|crores)\b', text):
+            multiplier = 10000000
+        elif re.search(r'\b(lakh|lac|lacs|lakhs)\b', text):
+            multiplier = 100000
+        elif re.search(r'\b(thousand|k)\b', text):
+            multiplier = 1000
+        parsed = int(num * multiplier)
+        if parsed < 100 and multiplier == 1:
+            return None
+        return str(parsed)
+
+    def extract_amount_near_label(label_pattern, text):
+        """Extract the nearest currency amount following a label phrase."""
+        candidates = []
+        for m in re.finditer(label_pattern, text, re.IGNORECASE):
+            snippet = text[m.end():m.end() + 120]
+            for amt in re.finditer(r'(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)', snippet, re.IGNORECASE):
+                parsed = parse_currency_amount(amt.group(1).replace(',', ''), snippet)
+                if parsed:
+                    candidates.append(int(parsed))
+            # Also attempt to parse amounts with scales like Rs.2 Crore
+            for amt in re.finditer(r'(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)\s*(crore|cr|crores|lakh|lac|lacs|lakhs|thousand|k)', snippet, re.IGNORECASE):
+                parsed = parse_currency_amount(amt.group(1).replace(',', ''), amt.group(0))
+                if parsed:
+                    candidates.append(int(parsed))
+        if candidates:
+            return str(max(candidates))
+        return None
+
+    def find_largest_currency_amount(text, minimum=10000):
+        values = []
+        for amt in re.finditer(r'(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)', text, re.IGNORECASE):
+            parsed = parse_currency_amount(amt.group(1).replace(',', ''), text[amt.start():amt.end() + 20])
+            if parsed:
+                v = int(parsed)
+                if v >= minimum:
+                    values.append(v)
+        for amt in re.finditer(r'(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d{1,2})?)\s*(crore|cr|crores|lakh|lac|lacs|lakhs|thousand|k)', text, re.IGNORECASE):
+            parsed = parse_currency_amount(amt.group(1).replace(',', ''), amt.group(0))
+            if parsed:
+                v = int(parsed)
+                if v >= minimum:
+                    values.append(v)
+        if values:
+            return str(max(values))
         return None
 
     def fmt_inr(n):
@@ -326,7 +466,7 @@ def get_mock_json_response(prompt: str) -> str:
         elif "apex" in filename_hint:
             lender_name = "Apex Realty Group"
 
-    b_match = re.search(r'(?:borrower|applicant|customer|tenant|lessee|policyholder|insured|beneficiary)(?:\s+name)?\s*[:\-]?\s*([A-Za-z][A-Za-z ]{3,40})', doc_text, re.IGNORECASE)
+    b_match = re.search(r'\b(?:borrower|applicant|customer|tenant|lessee|policyholder|insured|beneficiary)(?:\s+name)?\s*[:\-]\s*([A-Za-z][A-Za-z ]{3,40})', doc_text, re.IGNORECASE)
     if b_match:
         borrower_name = b_match.group(1).split('\n')[0].strip()
 
@@ -372,9 +512,11 @@ def get_mock_json_response(prompt: str) -> str:
         emi_numeric = 708
         processing_fee = "₹1,000 Administration Fee"
 
-        si_raw = extract_amount(r'(?:sum insured|sum assured|coverage|insured amount|policy amount|cover amount|total cover)', doc_text)
-        if not si_raw:
-            si_raw = extract_large_amount_fallback(doc_text)
+        si_raw = extract_amount_near_label(r'(?:sum insured|sum assured|coverage limit|insured amount|policy amount|cover amount|total cover|total sum insured|sum insured cover limit|total cover limit)', doc_text)
+        if not si_raw or int(float(si_raw)) < 1000:
+            si_raw = extract_amount(r'(?:sum insured|sum assured|coverage|insured amount|policy amount|cover amount|total cover)', doc_text)
+        if not si_raw or int(float(si_raw)) < 1000:
+            si_raw = find_largest_currency_amount(doc_text, minimum=10000)
         if si_raw:
             loan_amount = fmt_inr(si_raw)
             loan_amount_numeric = int(float(si_raw))
@@ -716,6 +858,7 @@ def get_mock_json_response(prompt: str) -> str:
     elif category == "Insurance":
         # Dynamic Sub-Type Detection for Insurance
         insurance_sub_type = "Health Insurance"  # default
+        doc_lower = (doc_text or "").lower()
         auto_words = [r"\bcar\b", r"\bvehicle\b", r"\bauto\b", r"\bmotor\b", r"\bdriving\b", r"\bcollision\b", r"\bgarage\b", r"\broadside\b", r"\baccident\b"]
         life_words = [r"\blife\b", r"\bdeath\b", r"\bbeneficiary\b", r"\bsurrender\b", r"\bterm\b", r"\bmortality\b", r"\bnominee\b"]
         prop_words = [r"\bproperty\b", r"\bhome\b", r"\bbuilding\b", r"\bdwelling\b", r"\bfire\b", r"\btheft\b", r"\bsubsidence\b", r"\bstructure\b"]

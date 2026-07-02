@@ -9,3 +9,4 @@ gunicorn==22.0.0
 werkzeug==3.0.3
 google-auth==2.30.0
 requests==2.32.3
+Flask-Babel==3.1.0
