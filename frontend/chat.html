@@ -235,29 +235,66 @@
     }
     let isRecording = false;
     let recognition = null;
+    let finalVoiceText = "";
+    let latestVoiceText = "";
+    let voiceHadError = false;
 
     // Speech-to-Text Web API setup
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
       recognition.lang = 'en-US';
 
+      recognition.onstart = function() {
+        isRecording = true;
+        const btn = document.getElementById('voiceBtn');
+        btn.classList.add('active');
+        btn.textContent = "🛑";
+      };
+
       recognition.onresult = function(event) {
-        const text = event.results[0][0].transcript;
-        document.getElementById('chatInput').value = text;
-        stopVoiceListening();
-        sendChatMessage();
+        let interimText = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalVoiceText += transcript;
+          } else {
+            interimText += transcript;
+          }
+        }
+
+        latestVoiceText = (finalVoiceText || interimText).trim();
+        document.getElementById('chatInput').value = latestVoiceText;
       };
 
       recognition.onerror = function(event) {
-        toast("Voice recognition error: " + event.error, "error");
-        stopVoiceListening();
+        const messages = {
+          "not-allowed": "Microphone permission was blocked. Allow mic access in the browser and try again.",
+          "service-not-allowed": "Speech recognition needs Chrome/Edge with microphone permission enabled.",
+          "no-speech": "I could not hear anything. Try speaking a little closer to the mic.",
+          "audio-capture": "No microphone was found. Check your input device.",
+          "network": "Speech recognition could not reach the browser speech service."
+        };
+        voiceHadError = true;
+        toast(messages[event.error] || ("Voice recognition error: " + event.error), "error");
+        resetVoiceButton();
       };
 
       recognition.onend = function() {
-        stopVoiceListening();
+        const spokenText = (finalVoiceText || latestVoiceText).trim();
+        resetVoiceButton();
+        finalVoiceText = "";
+        latestVoiceText = "";
+
+        if (!voiceHadError && spokenText) {
+          document.getElementById('chatInput').value = spokenText;
+          sendChatMessage();
+        }
+        voiceHadError = false;
       };
     }
 
@@ -275,10 +312,14 @@
     }
 
     function startVoiceListening() {
-      isRecording = true;
-      const btn = document.getElementById('voiceBtn');
-      btn.classList.add('active');
-      btn.textContent = "🛑";
+      if(!window.isSecureContext && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+        toast("Microphone access requires HTTPS or localhost.", "error");
+        return;
+      }
+
+      finalVoiceText = "";
+      latestVoiceText = "";
+      voiceHadError = false;
       
       // Update recognition language based on selector
       if(activeLang === 'hi') recognition.lang = 'hi-IN';
@@ -286,18 +327,36 @@
       else if(activeLang === 'ta') recognition.lang = 'ta-IN';
       else if(activeLang === 'te') recognition.lang = 'te-IN';
       else if(activeLang === 'ml') recognition.lang = 'ml-IN';
+      else if(activeLang === 'mr') recognition.lang = 'mr-IN';
       else recognition.lang = 'en-US';
 
-      recognition.start();
-      toast("Listening... Speak clearly into your microphone.", "info");
+      try {
+        recognition.start();
+        toast("Listening... Speak clearly into your microphone.", "info");
+      } catch(e) {
+        resetVoiceButton();
+        toast("Voice input is already starting. Please try again in a moment.", "info");
+      }
     }
 
     function stopVoiceListening() {
+      if(!isRecording) {
+        resetVoiceButton();
+        return;
+      }
+
+      try {
+        recognition.stop();
+      } catch(e) {
+        resetVoiceButton();
+      }
+    }
+
+    function resetVoiceButton() {
       isRecording = false;
       const btn = document.getElementById('voiceBtn');
       btn.classList.remove('active');
       btn.textContent = "🎙️";
-      if(recognition) recognition.stop();
     }
 
     function changeLanguage(silent = false) {
